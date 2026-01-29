@@ -1,0 +1,186 @@
+{
+  "$schema": "Pricing Calculation Output",
+  "description": "Example output from the pricing engine",
+
+  "example_pricing_result": {
+    "id": "price_01HXYZ123456",
+    "applicationId": "app_01HXYZ789",
+    "pricingCardId": "DSCR_30YR_FIXED_2024_01",
+
+    "inputs": {
+      "ltvRatio": 0.72,
+      "creditScore": 742,
+      "dscrRatio": 1.28,
+      "loanAmount": {
+        "amount": 32400000,
+        "currency": "USD"
+      },
+      "lockPeriodDays": 45,
+      "propertyType": "SFR",
+      "loanPurpose": "CASH_OUT_REFI",
+      "prepayPenalty": "3"
+    },
+
+    "baseRate": 7.375,
+
+    "adders": [
+      {
+        "adderId": "CREDIT_ADDER",
+        "name": "Credit Score Adjustment",
+        "category": "CREDIT",
+        "inputValue": 742,
+        "adjustment": -0.125,
+        "reason": "Credit score of 742: 0.125% credit"
+      },
+      {
+        "adderId": "DSCR_ADDER",
+        "name": "DSCR Adjustment",
+        "category": "DSCR",
+        "inputValue": 1.28,
+        "adjustment": 0.0,
+        "reason": "DSCR of 1.28: 0% adder"
+      },
+      {
+        "adderId": "LOAN_AMOUNT_ADDER",
+        "name": "Loan Amount Adjustment",
+        "category": "LOAN_AMOUNT",
+        "inputValue": 324000,
+        "adjustment": 0.0,
+        "reason": "Loan amount $324,000: 0% adder"
+      },
+      {
+        "adderId": "PROPERTY_TYPE_ADDER",
+        "name": "Property Type Adjustment",
+        "category": "PROPERTY_TYPE",
+        "inputValue": 0,
+        "adjustment": 0.0,
+        "reason": "Property type adjustment: 0% adder"
+      },
+      {
+        "adderId": "CASH_OUT_ADDER",
+        "name": "Cash-Out Refinance Adjustment",
+        "category": "CASH_OUT",
+        "inputValue": 1,
+        "adjustment": 0.25,
+        "reason": "Cash-out refinance: 0.25% adder"
+      },
+      {
+        "adderId": "PREPAY_CREDIT",
+        "name": "Prepayment Penalty Credit",
+        "category": "PREPAY",
+        "inputValue": 3,
+        "adjustment": -0.50,
+        "reason": "3-year prepay: 0.50% credit"
+      },
+      {
+        "adderId": "LOCK_PERIOD",
+        "name": "Lock Period Adjustment",
+        "category": "LOCK_PERIOD",
+        "inputValue": 45,
+        "adjustment": 0.125,
+        "reason": "45-day lock period"
+      }
+    ],
+
+    "totalAdders": -0.25,
+    "finalRate": 7.125,
+
+    "lock": null,
+
+    "calculatedAt": "2024-01-15T10:40:00Z",
+    "syncedToEncompass": true,
+
+    "explanation": {
+      "summary": "Final rate of 7.125% (base 7.375% + -0.25% adjustments)",
+      "factors": [
+        {
+          "name": "LTV",
+          "description": "LTV of 72.0%",
+          "adjustment": 0,
+          "inputValue": 0.72,
+          "range": "70.01-75%"
+        },
+        {
+          "name": "Credit Score Adjustment",
+          "description": "Credit score: 742",
+          "adjustment": -0.125,
+          "inputValue": 742,
+          "range": "740 - 759"
+        },
+        {
+          "name": "DSCR Adjustment",
+          "description": "DSCR: 1.28",
+          "adjustment": 0.0,
+          "inputValue": 1.28,
+          "range": "1.25 - 1.49"
+        },
+        {
+          "name": "Loan Amount Adjustment",
+          "description": "Loan amount: $324,000",
+          "adjustment": 0.0,
+          "inputValue": 324000,
+          "range": "250001 - 500000"
+        },
+        {
+          "name": "Cash-Out Refinance Adjustment",
+          "description": "Cash-out refinance",
+          "adjustment": 0.25,
+          "inputValue": 1
+        },
+        {
+          "name": "Prepayment Penalty Credit",
+          "description": "3-year prepay penalty",
+          "adjustment": -0.50,
+          "inputValue": 3
+        },
+        {
+          "name": "Lock Period",
+          "description": "45-day rate lock",
+          "adjustment": 0.125,
+          "inputValue": 45
+        }
+      ],
+      "totalAdjustment": -0.25
+    },
+
+    "alternatives": [
+      {
+        "name": "Lower LTV",
+        "change": "Reduce LTV to 65%",
+        "newRate": 6.875,
+        "savings": 0.25
+      },
+      {
+        "name": "Add Prepay Penalty",
+        "change": "Add 5-year prepayment penalty",
+        "newRate": 6.875,
+        "savings": 0.25
+      },
+      {
+        "name": "Shorter Lock",
+        "change": "Use 30-day lock period",
+        "newRate": 7.0,
+        "savings": 0.125
+      }
+    ]
+  },
+
+  "example_rate_lock": {
+    "lockId": "price_01HXYZ123456",
+    "lockedRate": 7.125,
+    "lockedAt": "2024-01-15T14:00:00Z",
+    "expiresAt": "2024-03-01T14:00:00Z",
+    "lockPeriodDays": 45
+  },
+
+  "encompass_field_mapping": {
+    "baseRate": "CX.PRICE_BASE_RATE",
+    "totalAdders": "CX.PRICE_ADDERS_TOTAL",
+    "finalRate": "CX.PRICE_FINAL_RATE",
+    "pricingCardId": "CX.PRICE_CARD_ID",
+    "lock.lockedAt": "CX.PRICE_LOCK_DATE",
+    "lock.expiresAt": "CX.PRICE_LOCK_EXPIRY",
+    "lockPeriodDays": "CX.PRICE_LOCK_DAYS",
+    "explanation.factors": "CX.PRICE_ADDER_DETAIL"
+  }
+}

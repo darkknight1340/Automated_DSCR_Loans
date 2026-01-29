@@ -1,0 +1,390 @@
+{
+  "$schema": "DSCR Eligibility Rules Configuration",
+  "description": "Versioned eligibility rules for DSCR loan program",
+
+  "ruleSetName": "DSCR_ELIGIBILITY",
+  "version": "2.1.0",
+  "effectiveFrom": "2024-01-01T00:00:00Z",
+  "effectiveTo": null,
+  "description": "DSCR refinance eligibility rules - Q1 2024",
+
+  "rules": [
+    {
+      "id": "DSCR_MIN",
+      "name": "Minimum DSCR Requirement",
+      "description": "Debt Service Coverage Ratio must be at least 1.0",
+      "category": "DSCR",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "dscr.ratio",
+        "operator": "gte",
+        "value": 1.0
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "DSCR of {{dscr.ratio}} meets minimum requirement of 1.0"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "DSCR of {{dscr.ratio}} is below minimum requirement of 1.0",
+        "createCondition": {
+          "code": "DSCR-010",
+          "category": "PTD",
+          "title": "Low DSCR Exception Approval",
+          "description": "DSCR below 1.0 requires senior UW approval with compensating factors documented"
+        }
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "LTV_MAX",
+      "name": "Maximum LTV Requirement",
+      "description": "Loan-to-Value ratio cannot exceed 80%",
+      "category": "LTV",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "ltv.ratio",
+        "operator": "lte",
+        "value": 0.80
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "LTV of {{ltv.ratio | percent}} is within maximum of 80%"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "LTV of {{ltv.ratio | percent}} exceeds maximum of 80%"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "CREDIT_MIN",
+      "name": "Minimum Credit Score",
+      "description": "Representative credit score must be at least 660",
+      "category": "CREDIT",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "credit.score",
+        "operator": "gte",
+        "value": 660
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Credit score of {{credit.score}} meets minimum of 660"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Credit score of {{credit.score}} is below minimum of 660"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "PROPERTY_TYPE_ELIGIBLE",
+      "name": "Eligible Property Type",
+      "description": "Property type must be on eligible list",
+      "category": "PROPERTY",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "property.type",
+        "operator": "in",
+        "value": ["SFR", "CONDO", "TOWNHOUSE", "2_4_UNIT", "MULTIFAMILY"]
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Property type {{property.type}} is eligible"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Property type {{property.type}} is not eligible for DSCR loans"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "INVESTMENT_ONLY",
+      "name": "Investment Property Only",
+      "description": "Property must be investment (non-owner occupied)",
+      "category": "PROPERTY",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "property.occupancy",
+        "operator": "eq",
+        "value": "INVESTMENT"
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Property is correctly classified as investment"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "DSCR loans are only available for investment properties"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "LOAN_AMOUNT_MIN",
+      "name": "Minimum Loan Amount",
+      "description": "Loan amount must be at least $100,000",
+      "category": "LOAN",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "loan.amount",
+        "operator": "gte",
+        "value": 100000
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Loan amount of {{loan.amount | currency}} meets minimum"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Loan amount of {{loan.amount | currency}} is below minimum of $100,000"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "LOAN_AMOUNT_MAX",
+      "name": "Maximum Loan Amount",
+      "description": "Loan amount cannot exceed $3,000,000",
+      "category": "LOAN",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "loan.amount",
+        "operator": "lte",
+        "value": 3000000
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Loan amount of {{loan.amount | currency}} is within maximum"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Loan amount of {{loan.amount | currency}} exceeds maximum of $3,000,000"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "CASH_OUT_MAX",
+      "name": "Cash-Out Limits",
+      "description": "Cash-out cannot exceed $500,000 and LTV must be <= 75%",
+      "category": "LOAN",
+      "condition": {
+        "type": "COMPOUND",
+        "logic": "OR",
+        "conditions": [
+          {
+            "type": "SIMPLE",
+            "field": "loan.purpose",
+            "operator": "ne",
+            "value": "CASH_OUT_REFI"
+          },
+          {
+            "type": "COMPOUND",
+            "logic": "AND",
+            "conditions": [
+              {
+                "type": "SIMPLE",
+                "field": "loan.cashOutAmount",
+                "operator": "lte",
+                "value": 500000
+              },
+              {
+                "type": "SIMPLE",
+                "field": "ltv.ratio",
+                "operator": "lte",
+                "value": 0.75
+              }
+            ]
+          }
+        ]
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Cash-out is within program limits"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Cash-out exceeds limits (maximum $500,000 at 75% LTV)"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "RESERVES_MIN",
+      "name": "Minimum Reserves",
+      "description": "Borrower must have at least 6 months PITIA in reserves",
+      "category": "BORROWER",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "borrower.reservesMonths",
+        "operator": "gte",
+        "value": 6
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Reserves of {{borrower.reservesMonths}} months meet requirement"
+      },
+      "onFail": {
+        "result": "WARN",
+        "message": "Reserves of {{borrower.reservesMonths}} months are below required 6 months",
+        "createCondition": {
+          "code": "DSCR-003",
+          "category": "PTD",
+          "title": "Verify Reserves",
+          "description": "Provide bank statements showing 6 months of PITIA reserves (${{reserves.required | currency}} required)"
+        }
+      },
+      "severity": "WARNING",
+      "isActive": true
+    },
+    {
+      "id": "MORTGAGE_HISTORY",
+      "name": "Mortgage Payment History",
+      "description": "No mortgage late payments in last 12 months",
+      "category": "CREDIT",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "credit.mortgageLates12Mo",
+        "operator": "eq",
+        "value": 0
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Clean mortgage payment history"
+      },
+      "onFail": {
+        "result": "WARN",
+        "message": "{{credit.mortgageLates12Mo}} mortgage late payment(s) in last 12 months",
+        "createCondition": {
+          "code": "DSCR-015",
+          "category": "PTD",
+          "title": "Letter of Explanation - Mortgage Late Payments",
+          "description": "Provide written explanation for mortgage late payment(s)"
+        }
+      },
+      "severity": "WARNING",
+      "isActive": true
+    },
+    {
+      "id": "BK_SEASONING",
+      "name": "Bankruptcy Seasoning",
+      "description": "Bankruptcy must be discharged at least 4 years",
+      "category": "CREDIT",
+      "condition": {
+        "type": "COMPOUND",
+        "logic": "OR",
+        "conditions": [
+          {
+            "type": "SIMPLE",
+            "field": "credit.hasBankruptcy",
+            "operator": "eq",
+            "value": false
+          },
+          {
+            "type": "SIMPLE",
+            "field": "credit.bankruptcyDischargeMonths",
+            "operator": "gte",
+            "value": 48
+          }
+        ]
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Bankruptcy seasoning requirement met"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Bankruptcy discharged only {{credit.bankruptcyDischargeMonths}} months ago (48 months required)"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "STATE_ELIGIBLE",
+      "name": "Eligible State",
+      "description": "Property must be in a state where we are licensed to lend",
+      "category": "PROPERTY",
+      "condition": {
+        "type": "SIMPLE",
+        "field": "property.state",
+        "operator": "not_in",
+        "value": ["NY", "NJ", "VT"]
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Property state {{property.state}} is eligible"
+      },
+      "onFail": {
+        "result": "FAIL",
+        "message": "Property state {{property.state}} is not currently eligible"
+      },
+      "severity": "BLOCKING",
+      "isActive": true
+    },
+    {
+      "id": "ENTITY_DOCS",
+      "name": "Entity Documentation",
+      "description": "Entity borrowers must provide formation documents",
+      "category": "BORROWER",
+      "condition": {
+        "type": "COMPOUND",
+        "logic": "OR",
+        "conditions": [
+          {
+            "type": "SIMPLE",
+            "field": "borrower.type",
+            "operator": "eq",
+            "value": "INDIVIDUAL"
+          },
+          {
+            "type": "SIMPLE",
+            "field": "borrower.entityDocsReceived",
+            "operator": "eq",
+            "value": true
+          }
+        ]
+      },
+      "onPass": {
+        "result": "PASS",
+        "message": "Entity documentation requirement met"
+      },
+      "onFail": {
+        "result": "WARN",
+        "message": "Entity documentation required",
+        "createCondition": {
+          "code": "DSCR-002",
+          "category": "PTD",
+          "title": "Entity Documentation",
+          "description": "Provide operating agreement, articles of organization, and certificate of good standing"
+        }
+      },
+      "severity": "WARNING",
+      "isActive": true
+    }
+  ],
+
+  "metadata": {
+    "createdBy": "system",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "approvedBy": "credit_committee",
+    "approvedAt": "2023-12-15T00:00:00Z",
+    "changeLog": [
+      {
+        "version": "2.1.0",
+        "date": "2024-01-01",
+        "changes": ["Added state eligibility rule", "Updated cash-out limits"]
+      },
+      {
+        "version": "2.0.0",
+        "date": "2023-10-01",
+        "changes": ["Major refactor for new rules engine", "Added compound conditions"]
+      }
+    ]
+  }
+}

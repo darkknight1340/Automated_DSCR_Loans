@@ -1,0 +1,247 @@
+{
+  "$schema": "Pre-Approval Decision Packet",
+  "description": "Complete decision packet for pre-approval, including all supporting data",
+
+  "example_approved_decision": {
+    "decision": {
+      "id": "dec_01HXYZ123456",
+      "applicationId": "app_01HXYZ789",
+      "decisionType": "PRE_APPROVAL",
+      "decisionResult": "APPROVED",
+      "decidedBy": "SYSTEM",
+      "decisionAuthority": "AUTO",
+      "decidedAt": "2024-01-15T11:00:00Z",
+      "isOverride": false,
+      "adverseActionRequired": false,
+      "syncedToEncompass": true
+    },
+
+    "summary": {
+      "loanAmount": 324000,
+      "propertyValue": 450000,
+      "ltv": 0.72,
+      "interestRate": 7.125,
+      "monthlyPayment": 2180,
+      "dscrRatio": 1.28,
+      "borrowerName": "John Smith",
+      "propertyAddress": "123 Main Street, Austin, TX 78701"
+    },
+
+    "eligibilityEvaluation": {
+      "id": "eval_01HXYZ123456",
+      "overallResult": "APPROVED",
+      "rulesPassed": 12,
+      "rulesFailed": 0,
+      "rulesWarned": 0,
+      "evaluatedAt": "2024-01-15T10:35:00Z"
+    },
+
+    "pricingCalculation": {
+      "id": "price_01HXYZ123456",
+      "baseRate": 7.375,
+      "totalAdders": -0.25,
+      "finalRate": 7.125,
+      "calculatedAt": "2024-01-15T10:40:00Z"
+    },
+
+    "dscrCalculation": {
+      "id": "dscr_01HXYZ123456",
+      "grossMonthlyRent": 4200,
+      "effectiveGrossRent": 3990,
+      "noiMonthly": 3580,
+      "pitiaMonthly": 2797,
+      "dscrRatio": 1.28,
+      "meetsMinimum": true,
+      "calculatedAt": "2024-01-15T10:30:00Z"
+    },
+
+    "creditSummary": {
+      "representativeScore": 742,
+      "bureau": "EXPERIAN",
+      "pullDate": "2024-01-15",
+      "pullType": "HARD",
+      "mortgageLatePayments": 0,
+      "publicRecords": 0
+    },
+
+    "avmSummary": {
+      "estimatedValue": 450000,
+      "confidenceLevel": "HIGH",
+      "confidenceScore": 85,
+      "vendor": "CORELOGIC",
+      "valueDate": "2024-01-15"
+    },
+
+    "conditions": [
+      {
+        "id": "cond_01HXYZ001",
+        "code": "DSCR-001",
+        "category": "PTD",
+        "title": "Rent Roll Documentation",
+        "description": "Provide current rent roll showing all unit rents and lease terms",
+        "status": "OPEN",
+        "responsibleParty": "BORROWER"
+      },
+      {
+        "id": "cond_01HXYZ002",
+        "code": "DSCR-003",
+        "category": "PTD",
+        "title": "Bank Statements",
+        "description": "Provide 2 months bank statements showing reserves",
+        "status": "OPEN",
+        "responsibleParty": "BORROWER"
+      }
+    ],
+
+    "conditionsAdded": 2,
+
+    "nextSteps": [
+      {
+        "step": 1,
+        "action": "Submit required documentation",
+        "deadline": "2024-01-22",
+        "responsible": "BORROWER"
+      },
+      {
+        "step": 2,
+        "action": "Lock rate",
+        "deadline": "2024-01-20",
+        "responsible": "LO",
+        "note": "Current rate valid until pricing card expires"
+      },
+      {
+        "step": 3,
+        "action": "Order appraisal",
+        "deadline": "2024-01-25",
+        "responsible": "PROCESSOR"
+      }
+    ],
+
+    "expirationDate": "2024-02-14",
+    "expirationReason": "Pre-approval valid for 30 days from decision date"
+  },
+
+  "example_denied_decision": {
+    "decision": {
+      "id": "dec_01HXYZ123457",
+      "applicationId": "app_01HXYZ790",
+      "decisionType": "PRE_APPROVAL",
+      "decisionResult": "DENIED",
+      "decidedBy": "SYSTEM",
+      "decisionAuthority": "AUTO",
+      "decidedAt": "2024-01-15T11:30:00Z",
+      "isOverride": false,
+      "adverseActionRequired": true,
+      "syncedToEncompass": true
+    },
+
+    "summary": {
+      "loanAmount": 400000,
+      "propertyValue": 450000,
+      "ltv": 0.89,
+      "borrowerName": "Jane Doe",
+      "propertyAddress": "456 Oak Avenue, Dallas, TX 75201"
+    },
+
+    "denialReasons": [
+      {
+        "code": "LTV_EXCEEDED",
+        "description": "Loan-to-value ratio of 89% exceeds maximum of 80%",
+        "rule": "LTV_MAX",
+        "threshold": 0.80,
+        "actual": 0.89
+      },
+      {
+        "code": "DSCR_BELOW_MINIMUM",
+        "description": "Debt service coverage ratio of 0.87 is below minimum of 1.0",
+        "rule": "DSCR_MIN",
+        "threshold": 1.0,
+        "actual": 0.87
+      }
+    ],
+
+    "adverseAction": {
+      "required": true,
+      "type": "NOTICE_OF_ADVERSE_ACTION",
+      "reasons": [
+        "Loan-to-value ratio too high",
+        "Insufficient property cash flow"
+      ],
+      "noticeGeneratedAt": "2024-01-15T11:35:00Z",
+      "noticeSentAt": null
+    },
+
+    "recommendations": [
+      {
+        "action": "Reduce loan amount",
+        "description": "Reducing loan amount to $360,000 would bring LTV to 80%",
+        "potentialOutcome": "LTV requirement would be met"
+      },
+      {
+        "action": "Increase down payment",
+        "description": "Additional down payment of $40,000 would bring LTV to 80%",
+        "potentialOutcome": "LTV requirement would be met"
+      },
+      {
+        "action": "Increase rental income",
+        "description": "Monthly rent would need to increase from $3,200 to approximately $3,800 to achieve 1.0 DSCR",
+        "potentialOutcome": "DSCR requirement would be met"
+      }
+    ],
+
+    "reapplicationEligible": true,
+    "reapplicationGuidelines": "May reapply immediately with modified loan terms or after 90 days with unchanged terms"
+  },
+
+  "example_exception_decision": {
+    "decision": {
+      "id": "dec_01HXYZ123458",
+      "applicationId": "app_01HXYZ791",
+      "decisionType": "PRE_APPROVAL",
+      "decisionResult": "EXCEPTION",
+      "decidedBy": "SYSTEM",
+      "decisionAuthority": "AUTO",
+      "decidedAt": "2024-01-15T12:00:00Z",
+      "isOverride": false,
+      "adverseActionRequired": false,
+      "syncedToEncompass": true
+    },
+
+    "exceptionsNoted": [
+      {
+        "code": "DSCR_BELOW_PREFERRED",
+        "description": "DSCR of 1.05 is below preferred level of 1.25",
+        "requiresApproval": false,
+        "impact": "Rate adder may apply"
+      },
+      {
+        "code": "RESERVES_BELOW_MINIMUM",
+        "description": "4 months reserves vs 6 months required",
+        "requiresApproval": true,
+        "approvalLevel": "SENIOR_UW"
+      }
+    ],
+
+    "pendingApprovals": [
+      {
+        "type": "RESERVE_EXCEPTION",
+        "requiredApprover": "SENIOR_UW",
+        "requestedAt": "2024-01-15T12:00:00Z",
+        "status": "PENDING"
+      }
+    ],
+
+    "escalationPath": [
+      {
+        "level": 1,
+        "role": "SENIOR_UW",
+        "slaHours": 24
+      },
+      {
+        "level": 2,
+        "role": "CREDIT_COMMITTEE",
+        "slaHours": 48
+      }
+    ]
+  }
+}

@@ -1,0 +1,2259 @@
+openapi: 3.0.3
+info:
+  title: DSCR Loan Automation Platform API
+  description: |
+    Comprehensive API for the DSCR (Debt Service Coverage Ratio) Loan Automation Platform.
+
+    This platform automates the full lifecycle of DSCR refinance loans from lead intake
+    through funding, with native integration to ICE Mortgage Technology Encompass LOS.
+
+    ## Authentication
+    All endpoints require Bearer token authentication via OAuth 2.0.
+
+    ## Rate Limiting
+    API calls are limited to 1000 requests per minute per client.
+
+    ## Versioning
+    The API is versioned via URL path (e.g., /api/v1/).
+  version: 1.0.0
+  contact:
+    name: DSCR Platform Team
+    email: support@dscrplatform.com
+
+servers:
+  - url: https://api.dscrplatform.com/api/v1
+    description: Production
+  - url: https://staging-api.dscrplatform.com/api/v1
+    description: Staging
+
+tags:
+  - name: Leads
+    description: Lead intake and CRM operations
+  - name: Applications
+    description: Loan application management
+  - name: Borrowers
+    description: Borrower and entity management
+  - name: Properties
+    description: Property and rent roll management
+  - name: Credit
+    description: Credit report ordering and analysis
+  - name: Valuation
+    description: AVM and appraisal management
+  - name: DSCR
+    description: DSCR calculation and scenarios
+  - name: Eligibility
+    description: Rules engine and eligibility evaluation
+  - name: Pricing
+    description: Pricing calculation and rate locks
+  - name: Decisions
+    description: Pre-approval and final approval decisions
+  - name: Conditions
+    description: Condition management
+  - name: Documents
+    description: Document upload and management
+  - name: Workflow
+    description: Task and milestone management
+  - name: Closing
+    description: Closing and funding operations
+  - name: PostClose
+    description: Post-close QC and investor delivery
+  - name: Encompass
+    description: Encompass integration endpoints
+  - name: Audit
+    description: Audit trail and explainability
+  - name: Analytics
+    description: Funnel analytics, pipeline metrics, and marketing attribution
+
+paths:
+  # ============================================================================
+  # LEADS
+  # ============================================================================
+  /leads:
+    post:
+      tags: [Leads]
+      summary: Create a new lead
+      operationId: createLead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeadRequest'
+      responses:
+        '201':
+          description: Lead created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    get:
+      tags: [Leads]
+      summary: List leads
+      operationId: listLeads
+      parameters:
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/LeadStatus'
+        - name: assignedLoId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadList'
+
+  /leads/{leadId}:
+    get:
+      tags: [Leads]
+      summary: Get lead by ID
+      operationId: getLead
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      responses:
+        '200':
+          description: Lead details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /leads/{leadId}/qualify:
+    post:
+      tags: [Leads]
+      summary: Qualify lead and convert to application
+      operationId: qualifyLead
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      responses:
+        '200':
+          description: Lead qualified and converted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadConversionResult'
+
+  # ============================================================================
+  # APPLICATIONS
+  # ============================================================================
+  /applications:
+    get:
+      tags: [Applications]
+      summary: List applications
+      operationId: listApplications
+      parameters:
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApplicationStatus'
+      responses:
+        '200':
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationList'
+
+  /applications/{applicationId}:
+    get:
+      tags: [Applications]
+      summary: Get application by ID
+      operationId: getApplication
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Application details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /applications/{applicationId}/summary:
+    get:
+      tags: [Applications]
+      summary: Get application summary with all related data
+      operationId: getApplicationSummary
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Complete application summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationSummary'
+
+  # ============================================================================
+  # BORROWERS
+  # ============================================================================
+  /borrowers/individuals:
+    post:
+      tags: [Borrowers]
+      summary: Create individual borrower
+      operationId: createIndividual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIndividualRequest'
+      responses:
+        '201':
+          description: Individual borrower created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndividualBorrower'
+
+  /borrowers/entities:
+    post:
+      tags: [Borrowers]
+      summary: Create entity borrower
+      operationId: createEntity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEntityRequest'
+      responses:
+        '201':
+          description: Entity borrower created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityBorrower'
+
+  /borrowers/entities/{entityId}/ownership:
+    post:
+      tags: [Borrowers]
+      summary: Add ownership member to entity
+      operationId: addOwnershipMember
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddOwnershipMemberRequest'
+      responses:
+        '201':
+          description: Ownership member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipMember'
+
+  # ============================================================================
+  # CREDIT
+  # ============================================================================
+  /applications/{applicationId}/credit:
+    post:
+      tags: [Credit]
+      summary: Order credit report
+      operationId: orderCredit
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreditOrderRequest'
+      responses:
+        '202':
+          description: Credit order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditOrderResponse'
+
+    get:
+      tags: [Credit]
+      summary: Get credit reports for application
+      operationId: getCreditReports
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Credit reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditReport'
+
+  # ============================================================================
+  # VALUATION
+  # ============================================================================
+  /applications/{applicationId}/avm:
+    post:
+      tags: [Valuation]
+      summary: Order AVM
+      operationId: orderAVM
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '202':
+          description: AVM order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AVMReport'
+
+    get:
+      tags: [Valuation]
+      summary: Get AVM reports
+      operationId: getAVMReports
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: AVM reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AVMReport'
+
+  /applications/{applicationId}/appraisal:
+    post:
+      tags: [Valuation]
+      summary: Order appraisal
+      operationId: orderAppraisal
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppraisalOrderRequest'
+      responses:
+        '202':
+          description: Appraisal order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appraisal'
+
+  # ============================================================================
+  # DSCR CALCULATION
+  # ============================================================================
+  /applications/{applicationId}/dscr:
+    post:
+      tags: [DSCR]
+      summary: Calculate DSCR
+      operationId: calculateDSCR
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DSCRCalculationRequest'
+      responses:
+        '200':
+          description: DSCR calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DSCRCalculationResult'
+
+  /applications/{applicationId}/dscr/scenarios:
+    post:
+      tags: [DSCR]
+      summary: Generate DSCR scenarios
+      operationId: generateDSCRScenarios
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: DSCR scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DSCRScenario'
+
+  # ============================================================================
+  # ELIGIBILITY
+  # ============================================================================
+  /applications/{applicationId}/eligibility:
+    post:
+      tags: [Eligibility]
+      summary: Evaluate eligibility
+      operationId: evaluateEligibility
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Eligibility evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResult'
+
+  /rules:
+    get:
+      tags: [Eligibility]
+      summary: List eligibility rules
+      operationId: listRules
+      parameters:
+        - name: version
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Eligibility rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSet'
+
+  # ============================================================================
+  # PRICING
+  # ============================================================================
+  /applications/{applicationId}/pricing:
+    post:
+      tags: [Pricing]
+      summary: Calculate pricing
+      operationId: calculatePricing
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingRequest'
+      responses:
+        '200':
+          description: Pricing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingResult'
+
+  /applications/{applicationId}/pricing/lock:
+    post:
+      tags: [Pricing]
+      summary: Lock rate
+      operationId: lockRate
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateLockRequest'
+      responses:
+        '200':
+          description: Rate locked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLock'
+
+  /pricing-cards:
+    get:
+      tags: [Pricing]
+      summary: List pricing cards
+      operationId: listPricingCards
+      responses:
+        '200':
+          description: Pricing cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PricingCard'
+
+  # ============================================================================
+  # DECISIONS
+  # ============================================================================
+  /applications/{applicationId}/decisions:
+    get:
+      tags: [Decisions]
+      summary: Get decisions for application
+      operationId: getDecisions
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Decision history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Decision'
+
+  /applications/{applicationId}/decisions/pre-approval:
+    post:
+      tags: [Decisions]
+      summary: Generate pre-approval decision
+      operationId: generatePreApproval
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Pre-approval decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+
+  /applications/{applicationId}/decisions/final-approval:
+    post:
+      tags: [Decisions]
+      summary: Issue final approval
+      operationId: issueFinalApproval
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Final approval decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+
+  /decisions/{decisionId}/explanation:
+    get:
+      tags: [Decisions]
+      summary: Get decision explanation
+      operationId: getDecisionExplanation
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Decision explanation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionExplanation'
+
+  # ============================================================================
+  # CONDITIONS
+  # ============================================================================
+  /applications/{applicationId}/conditions:
+    get:
+      tags: [Conditions]
+      summary: Get conditions for application
+      operationId: getConditions
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, CLEARED, WAIVED]
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [PTD, PTC, PTF, POST_CLOSE]
+      responses:
+        '200':
+          description: Conditions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Condition'
+
+  /conditions/{conditionId}/clear:
+    post:
+      tags: [Conditions]
+      summary: Clear a condition
+      operationId: clearCondition
+      parameters:
+        - name: conditionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearConditionRequest'
+      responses:
+        '200':
+          description: Condition cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+
+  # ============================================================================
+  # DOCUMENTS
+  # ============================================================================
+  /applications/{applicationId}/documents:
+    post:
+      tags: [Documents]
+      summary: Upload document
+      operationId: uploadDocument
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentUploadRequest'
+      responses:
+        '201':
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+
+    get:
+      tags: [Documents]
+      summary: List documents
+      operationId: listDocuments
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+
+  /applications/{applicationId}/documents/checklist:
+    get:
+      tags: [Documents]
+      summary: Get document checklist
+      operationId: getDocumentChecklist
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Document checklist
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentChecklistItem'
+
+  # ============================================================================
+  # WORKFLOW
+  # ============================================================================
+  /applications/{applicationId}/workflow:
+    get:
+      tags: [Workflow]
+      summary: Get workflow state
+      operationId: getWorkflowState
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Workflow state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowState'
+
+  /applications/{applicationId}/workflow/advance:
+    post:
+      tags: [Workflow]
+      summary: Advance milestone
+      operationId: advanceMilestone
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvanceMilestoneRequest'
+      responses:
+        '200':
+          description: Milestone advanced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneHistory'
+
+  /tasks:
+    get:
+      tags: [Workflow]
+      summary: Get task queue
+      operationId: getTaskQueue
+      parameters:
+        - name: assigneeId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, IN_PROGRESS, COMPLETED, BLOCKED]
+      responses:
+        '200':
+          description: Task queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+
+  /tasks/{taskId}/complete:
+    post:
+      tags: [Workflow]
+      summary: Complete task
+      operationId: completeTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTaskRequest'
+      responses:
+        '200':
+          description: Task completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  # ============================================================================
+  # CLOSING
+  # ============================================================================
+  /applications/{applicationId}/closing:
+    get:
+      tags: [Closing]
+      summary: Get closing information
+      operationId: getClosing
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Closing information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Closing'
+
+  /applications/{applicationId}/closing/docs:
+    post:
+      tags: [Closing]
+      summary: Order closing docs
+      operationId: orderClosingDocs
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClosingDocsOrderRequest'
+      responses:
+        '202':
+          description: Closing docs ordered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Closing'
+
+  /applications/{applicationId}/closing/schedule:
+    post:
+      tags: [Closing]
+      summary: Schedule closing
+      operationId: scheduleClosing
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleClosingRequest'
+      responses:
+        '200':
+          description: Closing scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Closing'
+
+  /applications/{applicationId}/funding/initiate:
+    post:
+      tags: [Closing]
+      summary: Initiate funding
+      operationId: initiateFunding
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Funding initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Closing'
+
+  # ============================================================================
+  # POST-CLOSE
+  # ============================================================================
+  /applications/{applicationId}/post-close:
+    get:
+      tags: [PostClose]
+      summary: Get post-close status
+      operationId: getPostClose
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Post-close status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCloseRecord'
+
+  /applications/{applicationId}/post-close/qc:
+    post:
+      tags: [PostClose]
+      summary: Initiate QC review
+      operationId: initiateQC
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: QC review initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCloseRecord'
+
+  # ============================================================================
+  # ENCOMPASS WEBHOOKS
+  # ============================================================================
+  /webhooks/encompass/loan-updated:
+    post:
+      tags: [Encompass]
+      summary: Handle Encompass loan update webhook
+      operationId: handleEncompassLoanUpdated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncompassWebhookPayload'
+      responses:
+        '200':
+          description: Webhook processed
+
+  /webhooks/encompass/milestone-changed:
+    post:
+      tags: [Encompass]
+      summary: Handle Encompass milestone change webhook
+      operationId: handleEncompassMilestoneChanged
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncompassWebhookPayload'
+      responses:
+        '200':
+          description: Webhook processed
+
+  # ============================================================================
+  # AUDIT
+  # ============================================================================
+  /applications/{applicationId}/audit-trail:
+    get:
+      tags: [Audit]
+      summary: Get audit trail for application
+      operationId: getAuditTrail
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit trail
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEvent'
+
+  /audit/exam-package:
+    post:
+      tags: [Audit]
+      summary: Generate exam package
+      operationId: generateExamPackage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamPackageRequest'
+      responses:
+        '200':
+          description: Exam package generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamPackage'
+
+  # ============================================================================
+  # ANALYTICS
+  # ============================================================================
+  /analytics/funnel:
+    get:
+      tags: [Analytics]
+      summary: Get funnel conversion metrics
+      operationId: getFunnelMetrics
+      description: |
+        Returns lead-to-funded conversion metrics with stage-by-stage breakdown.
+        Useful for tracking overall funnel performance and identifying bottlenecks.
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start date for the period
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End date for the period
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+          description: Time period grouping
+        - name: loanOfficerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by loan officer
+      responses:
+        '200':
+          description: Funnel metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunnelMetrics'
+
+  /analytics/marketing:
+    get:
+      tags: [Analytics]
+      summary: Get marketing attribution metrics
+      operationId: getMarketingMetrics
+      description: |
+        Returns marketing performance metrics including source attribution,
+        email campaign metrics, and website conversion rates.
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Marketing metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingMetrics'
+
+  /analytics/pipeline:
+    get:
+      tags: [Analytics]
+      summary: Get pipeline metrics
+      operationId: getPipelineMetrics
+      description: |
+        Returns real-time pipeline metrics including volume by milestone,
+        aging analysis, and SLA breaches.
+      parameters:
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [milestone, loanOfficer, processor]
+          description: Grouping dimension
+      responses:
+        '200':
+          description: Pipeline metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineMetrics'
+
+  /analytics/risk-distribution:
+    get:
+      tags: [Analytics]
+      summary: Get risk distribution metrics
+      operationId: getRiskDistribution
+      description: |
+        Returns portfolio risk distribution including DSCR, LTV, credit score
+        histograms and geographic concentration.
+      responses:
+        '200':
+          description: Risk distribution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskDistribution'
+
+  /analytics/velocity:
+    get:
+      tags: [Analytics]
+      summary: Get velocity metrics
+      operationId: getVelocityMetrics
+      description: |
+        Returns time-to-fund velocity metrics over time, useful for
+        tracking operational efficiency trends.
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+      responses:
+        '200':
+          description: Velocity metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VelocityMetrics'
+
+  /analytics/events:
+    post:
+      tags: [Analytics]
+      summary: Track analytics event
+      operationId: trackEvent
+      description: |
+        Records a client-side analytics event for funnel tracking,
+        page views, and conversion attribution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyticsEvent'
+      responses:
+        '202':
+          description: Event accepted for processing
+
+components:
+  parameters:
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Application ID
+
+    LeadId:
+      name: leadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Lead ID
+
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+      description: Number of items per page
+
+    PageToken:
+      name: pageToken
+      in: query
+      schema:
+        type: string
+      description: Pagination token
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # Common schemas
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    Money:
+      type: integer
+      description: Amount in cents
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+
+    # Lead schemas
+    LeadStatus:
+      type: string
+      enum: [NEW, CONTACTED, QUALIFIED, CONVERTED, LOST, DUPLICATE]
+
+    CreateLeadRequest:
+      type: object
+      required: [firstName, lastName, email, phone, propertyAddress, loanAmount]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        propertyAddress:
+          $ref: '#/components/schemas/Address'
+        loanAmount:
+          $ref: '#/components/schemas/Money'
+        propertyValue:
+          $ref: '#/components/schemas/Money'
+        monthlyRent:
+          $ref: '#/components/schemas/Money'
+        creditScoreRange:
+          type: string
+        source:
+          type: string
+        tcpaConsent:
+          type: boolean
+
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/LeadStatus'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        propertyAddress:
+          $ref: '#/components/schemas/Address'
+        loanAmount:
+          $ref: '#/components/schemas/Money'
+        score:
+          type: integer
+        assignedLoId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    LeadList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+        nextPageToken:
+          type: string
+        totalCount:
+          type: integer
+
+    LeadConversionResult:
+      type: object
+      properties:
+        lead:
+          $ref: '#/components/schemas/Lead'
+        application:
+          $ref: '#/components/schemas/Application'
+        encompassLoanGuid:
+          type: string
+
+    # Application schemas
+    ApplicationStatus:
+      type: string
+      enum: [CREATED, PROCESSING, SUBMITTED, APPROVED, DENIED, FUNDED, CLOSED]
+
+    Application:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        leadId:
+          type: string
+        borrowerId:
+          type: string
+        propertyId:
+          type: string
+        loanAmount:
+          $ref: '#/components/schemas/Money'
+        interestRate:
+          type: number
+        loanTerm:
+          type: integer
+        encompassLoanGuid:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApplicationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
+        nextPageToken:
+          type: string
+
+    ApplicationSummary:
+      type: object
+      properties:
+        application:
+          $ref: '#/components/schemas/Application'
+        borrower:
+          type: object
+        property:
+          type: object
+        credit:
+          type: object
+        valuation:
+          type: object
+        dscr:
+          type: object
+        eligibility:
+          type: object
+        pricing:
+          type: object
+        decision:
+          type: object
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        workflow:
+          $ref: '#/components/schemas/WorkflowState'
+
+    # Borrower schemas
+    CreateIndividualRequest:
+      type: object
+      required: [firstName, lastName, ssn, dateOfBirth]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        ssn:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+
+    IndividualBorrower:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [INDIVIDUAL]
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    CreateEntityRequest:
+      type: object
+      required: [legalName, ein, type, stateOfFormation]
+      properties:
+        legalName:
+          type: string
+        ein:
+          type: string
+        type:
+          type: string
+          enum: [LLC, CORPORATION, TRUST, PARTNERSHIP]
+        stateOfFormation:
+          type: string
+        dateOfFormation:
+          type: string
+          format: date
+
+    EntityBorrower:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        legalName:
+          type: string
+        stateOfFormation:
+          type: string
+
+    AddOwnershipMemberRequest:
+      type: object
+      required: [memberType, ownershipPercentage, role]
+      properties:
+        memberType:
+          type: string
+          enum: [INDIVIDUAL, ENTITY]
+        individualId:
+          type: string
+        entityId:
+          type: string
+        ownershipPercentage:
+          type: number
+        role:
+          type: string
+
+    OwnershipMember:
+      type: object
+      properties:
+        id:
+          type: string
+        memberType:
+          type: string
+        ownershipPercentage:
+          type: number
+        role:
+          type: string
+
+    # Credit schemas
+    CreditOrderRequest:
+      type: object
+      required: [pullType]
+      properties:
+        pullType:
+          type: string
+          enum: [SOFT, HARD]
+        bureaus:
+          type: array
+          items:
+            type: string
+            enum: [EQUIFAX, EXPERIAN, TRANSUNION]
+
+    CreditOrderResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          type: string
+
+    CreditReport:
+      type: object
+      properties:
+        id:
+          type: string
+        representativeScore:
+          type: integer
+        pullDate:
+          type: string
+          format: date-time
+        expirationDate:
+          type: string
+          format: date-time
+        analysis:
+          type: object
+
+    # Valuation schemas
+    AVMReport:
+      type: object
+      properties:
+        id:
+          type: string
+        estimatedValue:
+          $ref: '#/components/schemas/Money'
+        confidenceLevel:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        confidenceScore:
+          type: integer
+        valueLow:
+          $ref: '#/components/schemas/Money'
+        valueHigh:
+          $ref: '#/components/schemas/Money'
+
+    AppraisalOrderRequest:
+      type: object
+      required: [appraisalType]
+      properties:
+        appraisalType:
+          type: string
+          enum: [FULL_INTERIOR, DRIVE_BY, DESKTOP]
+        rushRequired:
+          type: boolean
+
+    Appraisal:
+      type: object
+      properties:
+        id:
+          type: string
+        appraisedValue:
+          $ref: '#/components/schemas/Money'
+        status:
+          type: string
+        completedDate:
+          type: string
+          format: date-time
+
+    # DSCR schemas
+    DSCRCalculationRequest:
+      type: object
+      properties:
+        grossMonthlyRent:
+          $ref: '#/components/schemas/Money'
+        vacancyRate:
+          type: number
+        managementFee:
+          type: number
+        propertyTax:
+          $ref: '#/components/schemas/Money'
+        insurance:
+          $ref: '#/components/schemas/Money'
+        hoa:
+          $ref: '#/components/schemas/Money'
+        loanAmount:
+          $ref: '#/components/schemas/Money'
+        interestRate:
+          type: number
+        loanTerm:
+          type: integer
+
+    DSCRCalculationResult:
+      type: object
+      properties:
+        dscrRatio:
+          type: number
+        grossRent:
+          $ref: '#/components/schemas/Money'
+        effectiveRent:
+          $ref: '#/components/schemas/Money'
+        noiMonthly:
+          $ref: '#/components/schemas/Money'
+        pitiaMonthly:
+          $ref: '#/components/schemas/Money'
+        meetsMinimum:
+          type: boolean
+
+    DSCRScenario:
+      type: object
+      properties:
+        name:
+          type: string
+        dscrRatio:
+          type: number
+        adjustedVariable:
+          type: string
+        adjustedValue:
+          type: number
+
+    # Eligibility schemas
+    EligibilityResult:
+      type: object
+      properties:
+        eligible:
+          type: boolean
+        score:
+          type: integer
+        rulesVersion:
+          type: string
+        passedRules:
+          type: integer
+        failedRules:
+          type: integer
+        blockingFailures:
+          type: array
+          items:
+            type: object
+        warnings:
+          type: array
+          items:
+            type: object
+
+    RuleSet:
+      type: object
+      properties:
+        version:
+          type: string
+        effectiveDate:
+          type: string
+          format: date-time
+        rules:
+          type: array
+          items:
+            type: object
+
+    # Pricing schemas
+    PricingRequest:
+      type: object
+      properties:
+        lockPeriod:
+          type: integer
+        prepayYears:
+          type: integer
+
+    PricingResult:
+      type: object
+      properties:
+        baseRate:
+          type: number
+        adjustments:
+          type: array
+          items:
+            type: object
+        finalRate:
+          type: number
+        apr:
+          type: number
+        monthlyPayment:
+          $ref: '#/components/schemas/Money'
+
+    RateLockRequest:
+      type: object
+      required: [lockPeriod]
+      properties:
+        lockPeriod:
+          type: integer
+          enum: [15, 30, 45, 60, 90]
+
+    RateLock:
+      type: object
+      properties:
+        lockedRate:
+          type: number
+        lockDate:
+          type: string
+          format: date-time
+        expirationDate:
+          type: string
+          format: date-time
+        lockPeriod:
+          type: integer
+
+    PricingCard:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        effectiveDate:
+          type: string
+          format: date
+        baseRates:
+          type: object
+        adders:
+          type: array
+          items:
+            type: object
+
+    # Decision schemas
+    Decision:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        decisionType:
+          type: string
+          enum: [PRE_APPROVAL, CONDITIONAL_APPROVAL, FINAL_APPROVAL, DECLINE, SUSPEND]
+        result:
+          type: string
+          enum: [APPROVED, DECLINED, SUSPENDED]
+        expirationDate:
+          type: string
+          format: date-time
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        rationale:
+          type: object
+
+    DecisionExplanation:
+      type: object
+      properties:
+        summary:
+          type: string
+        narrative:
+          type: string
+        keyFactors:
+          type: array
+          items:
+            type: object
+        rulesApplied:
+          type: array
+          items:
+            type: object
+        calculations:
+          type: array
+          items:
+            type: object
+
+    # Condition schemas
+    Condition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        category:
+          type: string
+          enum: [PTD, PTC, PTF, POST_CLOSE]
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, CLEARED, WAIVED]
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+
+    ClearConditionRequest:
+      type: object
+      properties:
+        clearanceMethod:
+          type: string
+          enum: [DOCUMENT_RECEIVED, MANUAL_REVIEW, WAIVED]
+        notes:
+          type: string
+        documentId:
+          type: string
+
+    # Document schemas
+    DocumentUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        documentType:
+          type: string
+        category:
+          type: string
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        documentType:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        classificationConfidence:
+          type: number
+        uploadedAt:
+          type: string
+          format: date-time
+
+    DocumentChecklistItem:
+      type: object
+      properties:
+        documentType:
+          type: string
+        name:
+          type: string
+        required:
+          type: boolean
+        status:
+          type: string
+          enum: [REQUIRED, OPTIONAL, PENDING_REVIEW, COMPLETE]
+
+    # Workflow schemas
+    WorkflowState:
+      type: object
+      properties:
+        applicationId:
+          type: string
+        currentMilestone:
+          type: string
+        milestoneEnteredAt:
+          type: string
+          format: date-time
+        activeTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        readyForAdvance:
+          type: boolean
+        advanceBlockers:
+          type: array
+          items:
+            type: string
+
+    AdvanceMilestoneRequest:
+      type: object
+      required: [targetMilestone]
+      properties:
+        targetMilestone:
+          type: string
+        notes:
+          type: string
+
+    MilestoneHistory:
+      type: object
+      properties:
+        milestone:
+          type: string
+        enteredAt:
+          type: string
+          format: date-time
+        exitedAt:
+          type: string
+          format: date-time
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskCode:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, BLOCKED]
+        priority:
+          type: string
+          enum: [URGENT, HIGH, MEDIUM, LOW]
+        assignedRole:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+
+    CompleteTaskRequest:
+      type: object
+      required: [outcome]
+      properties:
+        outcome:
+          type: string
+          enum: [SUCCESS, FAILED, WAIVED]
+        notes:
+          type: string
+
+    # Closing schemas
+    Closing:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        scheduledDate:
+          type: string
+          format: date-time
+        closingType:
+          type: string
+          enum: [IN_PERSON, RON, HYBRID]
+        fundingInfo:
+          type: object
+
+    ClosingDocsOrderRequest:
+      type: object
+      required: [closingDate, disbursementDate]
+      properties:
+        closingDate:
+          type: string
+          format: date-time
+        disbursementDate:
+          type: string
+          format: date-time
+        specialInstructions:
+          type: string
+
+    ScheduleClosingRequest:
+      type: object
+      required: [scheduledDate, closingType]
+      properties:
+        scheduledDate:
+          type: string
+          format: date-time
+        scheduledTime:
+          type: string
+        closingType:
+          type: string
+          enum: [IN_PERSON, RON, HYBRID, MAIL_AWAY]
+
+    # Post-close schemas
+    PostCloseRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        qcReview:
+          type: object
+        remediationItems:
+          type: array
+          items:
+            type: object
+
+    # Encompass schemas
+    EncompassWebhookPayload:
+      type: object
+      properties:
+        eventType:
+          type: string
+        loanGuid:
+          type: string
+        changedFields:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    # Audit schemas
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        category:
+          type: string
+        action:
+          type: string
+        eventType:
+          type: string
+        actor:
+          type: object
+        targetType:
+          type: string
+        targetId:
+          type: string
+        changes:
+          type: array
+          items:
+            type: object
+
+    ExamPackageRequest:
+      type: object
+      required: [applicationIds, dateRange]
+      properties:
+        applicationIds:
+          type: array
+          items:
+            type: string
+        dateRange:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+        categories:
+          type: array
+          items:
+            type: string
+
+    ExamPackage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        generatedAt:
+          type: string
+          format: date-time
+        summary:
+          type: object
+        auditTrail:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+
+    # Analytics schemas
+    FunnelStageMetrics:
+      type: object
+      properties:
+        stage:
+          type: string
+          enum: [LEAD, CONTACTED, QUALIFIED, APPLICATION, PRE_APPROVED, FUNDED]
+        count:
+          type: integer
+        conversionRate:
+          type: number
+          nullable: true
+        previousStage:
+          type: string
+
+    FunnelMetrics:
+      type: object
+      properties:
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunnelStageMetrics'
+        overallConversion:
+          type: number
+        period:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+
+    MarketingSourceMetrics:
+      type: object
+      properties:
+        source:
+          type: string
+        leads:
+          type: integer
+        conversions:
+          type: integer
+        conversionRate:
+          type: number
+        revenueCents:
+          type: integer
+
+    EmailMetrics:
+      type: object
+      properties:
+        sent:
+          type: integer
+        opened:
+          type: integer
+        openRate:
+          type: number
+        clicked:
+          type: integer
+        ctr:
+          type: number
+        converted:
+          type: integer
+
+    WebMetrics:
+      type: object
+      properties:
+        visitors:
+          type: integer
+        leadSubmissions:
+          type: integer
+        conversionRate:
+          type: number
+
+    MarketingMetrics:
+      type: object
+      properties:
+        bySource:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingSourceMetrics'
+        emailMetrics:
+          $ref: '#/components/schemas/EmailMetrics'
+        webMetrics:
+          $ref: '#/components/schemas/WebMetrics'
+        period:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+
+    PipelineMilestoneMetrics:
+      type: object
+      properties:
+        milestone:
+          type: string
+        count:
+          type: integer
+        volumeCents:
+          type: integer
+        avgDaysInStage:
+          type: number
+
+    SLABreach:
+      type: object
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        loanNumber:
+          type: string
+        milestone:
+          type: string
+        daysInStage:
+          type: number
+        slaHours:
+          type: integer
+        breachedAt:
+          type: string
+          format: date-time
+
+    PipelineMetrics:
+      type: object
+      properties:
+        byMilestone:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineMilestoneMetrics'
+        slaBreaches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SLABreach'
+        totalVolumeCents:
+          type: integer
+        totalCount:
+          type: integer
+
+    RiskBucket:
+      type: object
+      properties:
+        range:
+          type: string
+        count:
+          type: integer
+        min:
+          type: number
+        max:
+          type: number
+
+    StateDistribution:
+      type: object
+      properties:
+        state:
+          type: string
+        count:
+          type: integer
+        volumeCents:
+          type: integer
+
+    RiskDistribution:
+      type: object
+      properties:
+        dscr:
+          type: object
+          properties:
+            buckets:
+              type: array
+              items:
+                $ref: '#/components/schemas/RiskBucket'
+        ltv:
+          type: object
+          properties:
+            buckets:
+              type: array
+              items:
+                $ref: '#/components/schemas/RiskBucket'
+        creditScore:
+          type: object
+          properties:
+            buckets:
+              type: array
+              items:
+                $ref: '#/components/schemas/RiskBucket'
+        byState:
+          type: array
+          items:
+            $ref: '#/components/schemas/StateDistribution'
+
+    VelocityMetrics:
+      type: object
+      properties:
+        period:
+          type: string
+        avgDaysLeadToFund:
+          type: number
+        count:
+          type: integer
+
+    AnalyticsEvent:
+      type: object
+      required: [event]
+      properties:
+        event:
+          type: string
+          description: Event name (e.g., page_view, lead_form_started)
+        properties:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+        sessionId:
+          type: string
+        userId:
+          type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

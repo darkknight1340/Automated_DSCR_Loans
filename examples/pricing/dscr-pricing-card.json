@@ -1,0 +1,222 @@
+{
+  "$schema": "DSCR Pricing Card Configuration",
+  "description": "Rate card and adjustments for DSCR 30-Year Fixed product",
+
+  "id": "DSCR_30YR_FIXED_2024_Q1",
+  "cardName": "DSCR 30-Year Fixed - Q1 2024",
+  "productType": "DSCR_30YR_FIXED",
+
+  "effectiveDate": "2024-01-01",
+  "expirationDate": "2024-03-31",
+
+  "baseRates": {
+    "description": "Base rates by LTV tier (rate in %)",
+    "rates": {
+      "55": 7.000,
+      "60": 7.125,
+      "65": 7.250,
+      "70": 7.375,
+      "75": 7.500,
+      "80": 7.750
+    },
+    "note": "LTV is ceiling - 72% LTV uses 75% tier rate"
+  },
+
+  "lockPeriods": {
+    "description": "Lock period adjustments (rate adder in %)",
+    "periods": {
+      "15": -0.125,
+      "30": 0.000,
+      "45": 0.125,
+      "60": 0.250,
+      "90": 0.375
+    }
+  },
+
+  "adders": [
+    {
+      "id": "CREDIT_SCORE",
+      "name": "Credit Score Adjustment",
+      "category": "CREDIT",
+      "field": "creditScore",
+      "adjustmentType": "RATE",
+      "ranges": [
+        { "min": 780, "max": 850, "adjustment": -0.250, "label": "780+" },
+        { "min": 760, "max": 779, "adjustment": -0.125, "label": "760-779" },
+        { "min": 740, "max": 759, "adjustment": 0.000, "label": "740-759 (Base)" },
+        { "min": 720, "max": 739, "adjustment": 0.125, "label": "720-739" },
+        { "min": 700, "max": 719, "adjustment": 0.250, "label": "700-719" },
+        { "min": 680, "max": 699, "adjustment": 0.375, "label": "680-699" },
+        { "min": 660, "max": 679, "adjustment": 0.500, "label": "660-679" }
+      ]
+    },
+    {
+      "id": "DSCR_RATIO",
+      "name": "DSCR Adjustment",
+      "category": "DSCR",
+      "field": "dscrRatio",
+      "adjustmentType": "RATE",
+      "ranges": [
+        { "min": 1.50, "max": 999.0, "adjustment": -0.125, "label": "1.50+" },
+        { "min": 1.25, "max": 1.49, "adjustment": 0.000, "label": "1.25-1.49 (Base)" },
+        { "min": 1.10, "max": 1.24, "adjustment": 0.250, "label": "1.10-1.24" },
+        { "min": 1.00, "max": 1.09, "adjustment": 0.500, "label": "1.00-1.09" }
+      ]
+    },
+    {
+      "id": "LOAN_AMOUNT",
+      "name": "Loan Amount Adjustment",
+      "category": "LOAN_AMOUNT",
+      "field": "loanAmount",
+      "adjustmentType": "RATE",
+      "ranges": [
+        { "min": 100000, "max": 149999, "adjustment": 0.500, "label": "$100K-$149K" },
+        { "min": 150000, "max": 249999, "adjustment": 0.250, "label": "$150K-$249K" },
+        { "min": 250000, "max": 499999, "adjustment": 0.000, "label": "$250K-$499K (Base)" },
+        { "min": 500000, "max": 999999, "adjustment": -0.125, "label": "$500K-$999K" },
+        { "min": 1000000, "max": 1999999, "adjustment": -0.250, "label": "$1M-$1.99M" },
+        { "min": 2000000, "max": 3000000, "adjustment": -0.125, "label": "$2M-$3M" }
+      ]
+    },
+    {
+      "id": "PROPERTY_TYPE",
+      "name": "Property Type Adjustment",
+      "category": "PROPERTY_TYPE",
+      "field": "propertyType",
+      "adjustmentType": "RATE",
+      "mapping": {
+        "SFR": 0.000,
+        "TOWNHOUSE": 0.000,
+        "CONDO": 0.125,
+        "2_4_UNIT": 0.250,
+        "MULTIFAMILY": 0.375,
+        "MIXED_USE": 0.500
+      }
+    },
+    {
+      "id": "CASH_OUT",
+      "name": "Cash-Out Adjustment",
+      "category": "CASH_OUT",
+      "field": "isCashOut",
+      "adjustmentType": "RATE",
+      "mapping": {
+        "false": 0.000,
+        "true": 0.250
+      }
+    },
+    {
+      "id": "PREPAY_PENALTY",
+      "name": "Prepayment Penalty Credit",
+      "category": "PREPAY",
+      "field": "prepayYears",
+      "adjustmentType": "RATE",
+      "ranges": [
+        { "min": 0, "max": 0, "adjustment": 0.000, "label": "No Prepay" },
+        { "min": 1, "max": 1, "adjustment": -0.250, "label": "1-Year Prepay" },
+        { "min": 2, "max": 2, "adjustment": -0.375, "label": "2-Year Prepay" },
+        { "min": 3, "max": 3, "adjustment": -0.500, "label": "3-Year Prepay" },
+        { "min": 5, "max": 5, "adjustment": -0.750, "label": "5-Year Prepay" }
+      ],
+      "note": "Negative adjustment = credit (rate reduction)"
+    },
+    {
+      "id": "INTEREST_ONLY",
+      "name": "Interest-Only Adjustment",
+      "category": "LOAN_TERMS",
+      "field": "isInterestOnly",
+      "adjustmentType": "RATE",
+      "mapping": {
+        "false": 0.000,
+        "true": 0.250
+      }
+    },
+    {
+      "id": "FIRST_TIME_INVESTOR",
+      "name": "First-Time Investor Adjustment",
+      "category": "BORROWER",
+      "field": "isFirstTimeInvestor",
+      "adjustmentType": "RATE",
+      "mapping": {
+        "false": 0.000,
+        "true": 0.125
+      },
+      "note": "Applies to borrowers with no prior investment property experience"
+    },
+    {
+      "id": "RURAL_PROPERTY",
+      "name": "Rural Property Adjustment",
+      "category": "PROPERTY",
+      "field": "isRuralProperty",
+      "adjustmentType": "RATE",
+      "mapping": {
+        "false": 0.000,
+        "true": 0.250
+      }
+    },
+    {
+      "id": "HIGH_BALANCE",
+      "name": "High Balance County Adjustment",
+      "category": "LOAN_AMOUNT",
+      "field": "isHighBalanceCounty",
+      "adjustmentType": "RATE",
+      "mapping": {
+        "false": 0.000,
+        "true": 0.125
+      },
+      "note": "Applies in counties with conforming loan limits > $766,550"
+    }
+  ],
+
+  "floorRate": 6.000,
+  "ceilingRate": 12.000,
+
+  "specialPrograms": [
+    {
+      "id": "VOLUME_DISCOUNT",
+      "name": "Volume Borrower Discount",
+      "description": "Discount for borrowers with 5+ active loans",
+      "criteria": {
+        "activeLoansMinimum": 5
+      },
+      "adjustment": -0.125
+    },
+    {
+      "id": "BROKER_BONUS",
+      "name": "Broker Partner Bonus",
+      "description": "Additional credit for preferred broker partners",
+      "criteria": {
+        "partnerTier": "PLATINUM"
+      },
+      "adjustment": -0.0625
+    }
+  ],
+
+  "fees": {
+    "originationFee": {
+      "type": "PERCENTAGE",
+      "value": 1.00,
+      "note": "1% of loan amount"
+    },
+    "processingFee": {
+      "type": "FLAT",
+      "value": 995
+    },
+    "underwritingFee": {
+      "type": "FLAT",
+      "value": 1295
+    },
+    "documentPreparationFee": {
+      "type": "FLAT",
+      "value": 495
+    }
+  },
+
+  "metadata": {
+    "isActive": true,
+    "createdBy": "pricing_admin",
+    "createdAt": "2023-12-20T00:00:00Z",
+    "approvedBy": "chief_credit_officer",
+    "approvedAt": "2023-12-22T00:00:00Z",
+    "notes": "Q1 2024 pricing reflects market conditions as of Dec 2023"
+  }
+}

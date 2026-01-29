@@ -1,0 +1,247 @@
+{
+  "$schema": "Credit Pull Request and Response",
+  "description": "Example credit report data from credit pull",
+
+  "soft_pull_request": {
+    "applicationId": "app_01HXYZ789",
+    "borrowerId": "borr_01HXYZ456",
+    "pullType": "SOFT",
+    "bureaus": ["EXPERIAN", "EQUIFAX", "TRANSUNION"],
+    "purpose": "PRE_QUALIFICATION"
+  },
+
+  "hard_pull_request": {
+    "applicationId": "app_01HXYZ789",
+    "borrowerId": "borr_01HXYZ456",
+    "pullType": "HARD",
+    "bureaus": ["EXPERIAN", "EQUIFAX", "TRANSUNION"],
+    "purpose": "LOAN_APPLICATION",
+    "consentReceived": true,
+    "consentReceivedAt": "2024-01-15T10:00:00Z"
+  },
+
+  "example_credit_report": {
+    "id": "credit_01HXYZ123456",
+    "applicationId": "app_01HXYZ789",
+    "borrowerId": "borr_01HXYZ456",
+
+    "orderId": "CR-2024-001234",
+    "vendorOrderId": "ML-78901234",
+    "vendor": "MERIDIANLINK",
+
+    "pullType": "HARD",
+    "bureausRequested": ["EXPERIAN", "EQUIFAX", "TRANSUNION"],
+    "bureausReturned": ["EXPERIAN", "EQUIFAX", "TRANSUNION"],
+
+    "scores": {
+      "experian": 742,
+      "equifax": 738,
+      "transunion": 745,
+      "representative": 742,
+      "model": "FICO8"
+    },
+
+    "status": "RECEIVED",
+
+    "tradelines": [
+      {
+        "id": "tl_001",
+        "creditReportId": "credit_01HXYZ123456",
+        "creditorName": "CHASE BANK NA",
+        "accountNumberMasked": "****5678",
+        "accountType": "MORTGAGE",
+        "creditLimit": null,
+        "highBalance": {
+          "amount": 28000000,
+          "currency": "USD"
+        },
+        "currentBalance": {
+          "amount": 26500000,
+          "currency": "USD"
+        },
+        "monthlyPayment": {
+          "amount": 185000,
+          "currency": "USD"
+        },
+        "accountStatus": "OPEN",
+        "paymentStatus": "CURRENT",
+        "openedDate": "2021-06-15",
+        "lastActivityDate": "2024-01-01",
+        "times30Late": 0,
+        "times60Late": 0,
+        "times90Late": 0,
+        "isMortgage": true,
+        "propertyAddress": "123 Main Street, Austin, TX 78701"
+      },
+      {
+        "id": "tl_002",
+        "creditReportId": "credit_01HXYZ123456",
+        "creditorName": "CAPITAL ONE",
+        "accountNumberMasked": "****1234",
+        "accountType": "REVOLVING",
+        "creditLimit": {
+          "amount": 1500000,
+          "currency": "USD"
+        },
+        "highBalance": {
+          "amount": 800000,
+          "currency": "USD"
+        },
+        "currentBalance": {
+          "amount": 245000,
+          "currency": "USD"
+        },
+        "monthlyPayment": {
+          "amount": 10000,
+          "currency": "USD"
+        },
+        "accountStatus": "OPEN",
+        "paymentStatus": "CURRENT",
+        "openedDate": "2019-03-20",
+        "lastActivityDate": "2024-01-10",
+        "times30Late": 0,
+        "times60Late": 0,
+        "times90Late": 0,
+        "isMortgage": false
+      },
+      {
+        "id": "tl_003",
+        "creditReportId": "credit_01HXYZ123456",
+        "creditorName": "TOYOTA FINANCIAL",
+        "accountNumberMasked": "****9012",
+        "accountType": "INSTALLMENT",
+        "highBalance": {
+          "amount": 3500000,
+          "currency": "USD"
+        },
+        "currentBalance": {
+          "amount": 1800000,
+          "currency": "USD"
+        },
+        "monthlyPayment": {
+          "amount": 52000,
+          "currency": "USD"
+        },
+        "accountStatus": "OPEN",
+        "paymentStatus": "CURRENT",
+        "openedDate": "2022-08-10",
+        "lastActivityDate": "2024-01-05",
+        "times30Late": 0,
+        "times60Late": 0,
+        "times90Late": 0,
+        "isMortgage": false
+      }
+    ],
+
+    "publicRecords": [],
+
+    "inquiries": [
+      {
+        "id": "inq_001",
+        "creditReportId": "credit_01HXYZ123456",
+        "creditorName": "ABC MORTGAGE CO",
+        "inquiryDate": "2024-01-10",
+        "inquiryType": "HARD"
+      },
+      {
+        "id": "inq_002",
+        "creditReportId": "credit_01HXYZ123456",
+        "creditorName": "XYZ BANK",
+        "inquiryDate": "2023-12-15",
+        "inquiryType": "HARD"
+      }
+    ],
+
+    "orderedAt": "2024-01-15T10:30:00Z",
+    "receivedAt": "2024-01-15T10:30:45Z",
+    "expiresAt": "2024-05-15T10:30:45Z",
+
+    "syncedToEncompass": true,
+    "encompassServiceId": "CS-001234"
+  },
+
+  "example_credit_with_issues": {
+    "id": "credit_01HXYZ123457",
+    "applicationId": "app_01HXYZ790",
+    "borrowerId": "borr_01HXYZ457",
+
+    "scores": {
+      "experian": 658,
+      "equifax": 662,
+      "transunion": 655,
+      "representative": 658,
+      "model": "FICO8"
+    },
+
+    "status": "RECEIVED",
+
+    "tradelines": [
+      {
+        "id": "tl_101",
+        "creditorName": "WELLS FARGO",
+        "accountType": "MORTGAGE",
+        "currentBalance": {
+          "amount": 32000000,
+          "currency": "USD"
+        },
+        "accountStatus": "OPEN",
+        "paymentStatus": "30_DAYS",
+        "times30Late": 2,
+        "times60Late": 1,
+        "times90Late": 0,
+        "isMortgage": true
+      },
+      {
+        "id": "tl_102",
+        "creditorName": "DISCOVER",
+        "accountType": "REVOLVING",
+        "creditLimit": {
+          "amount": 500000,
+          "currency": "USD"
+        },
+        "currentBalance": {
+          "amount": 475000,
+          "currency": "USD"
+        },
+        "accountStatus": "OPEN",
+        "paymentStatus": "CURRENT",
+        "times30Late": 0,
+        "times60Late": 0,
+        "times90Late": 0,
+        "isMortgage": false
+      }
+    ],
+
+    "publicRecords": [
+      {
+        "id": "pr_001",
+        "creditReportId": "credit_01HXYZ123457",
+        "type": "TAX_LIEN",
+        "filingDate": "2022-03-15",
+        "amount": {
+          "amount": 450000,
+          "currency": "USD"
+        },
+        "status": "RELEASED"
+      }
+    ],
+
+    "creditFlags": [
+      {
+        "code": "LATE_PAYMENTS",
+        "description": "Recent late payments on mortgage tradeline",
+        "severity": "WARNING"
+      },
+      {
+        "code": "HIGH_UTILIZATION",
+        "description": "Credit card utilization above 90%",
+        "severity": "WARNING"
+      },
+      {
+        "code": "TAX_LIEN_HISTORY",
+        "description": "Released tax lien on record",
+        "severity": "INFO"
+      }
+    ]
+  }
+}

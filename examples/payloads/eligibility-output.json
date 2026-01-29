@@ -1,0 +1,332 @@
+{
+  "$schema": "Eligibility Evaluation Output",
+  "description": "Example output from the rules engine eligibility evaluation",
+
+  "example_approved": {
+    "id": "eval_01HXYZ123456",
+    "applicationId": "app_01HXYZ789",
+    "ruleVersionId": "rv_DSCR_ELIG_v2.1.0",
+
+    "evaluationType": "ELIGIBILITY",
+    "triggerEvent": "APPLICATION_SUBMITTED",
+
+    "inputSnapshot": {
+      "dscr": {
+        "ratio": 1.28,
+        "noiMonthly": 3840,
+        "pitiaMonthly": 3000
+      },
+      "ltv": {
+        "ratio": 0.72,
+        "loanAmount": 324000,
+        "propertyValue": 450000
+      },
+      "credit": {
+        "score": 742,
+        "bureau": "EXPERIAN",
+        "pullDate": "2024-01-15"
+      },
+      "property": {
+        "type": "SFR",
+        "occupancy": "INVESTMENT",
+        "units": 1,
+        "state": "TX"
+      },
+      "loan": {
+        "amount": 324000,
+        "purpose": "CASH_OUT_REFI",
+        "cashOutAmount": 44000,
+        "termMonths": 360
+      },
+      "borrower": {
+        "type": "INDIVIDUAL",
+        "reservesMonths": 9,
+        "entityDocsReceived": false
+      },
+      "documents": {
+        "rentRollReceived": true
+      }
+    },
+
+    "overallResult": "APPROVED",
+
+    "ruleResults": [
+      {
+        "ruleId": "DSCR_MIN",
+        "ruleName": "Minimum DSCR Requirement",
+        "category": "DSCR",
+        "result": "PASS",
+        "inputValues": {
+          "dscr.ratio": 1.28
+        },
+        "threshold": 1.0,
+        "actualValue": 1.28,
+        "message": "DSCR meets minimum requirement"
+      },
+      {
+        "ruleId": "LTV_MAX",
+        "ruleName": "Maximum LTV Requirement",
+        "category": "LTV",
+        "result": "PASS",
+        "inputValues": {
+          "ltv.ratio": 0.72
+        },
+        "threshold": 0.80,
+        "actualValue": 0.72,
+        "message": "LTV is within maximum limit"
+      },
+      {
+        "ruleId": "CREDIT_MIN",
+        "ruleName": "Minimum Credit Score",
+        "category": "CREDIT",
+        "result": "PASS",
+        "inputValues": {
+          "credit.score": 742
+        },
+        "threshold": 660,
+        "actualValue": 742,
+        "message": "Credit score meets minimum requirement"
+      },
+      {
+        "ruleId": "PROPERTY_TYPE_ELIGIBLE",
+        "ruleName": "Eligible Property Type",
+        "category": "PROPERTY",
+        "result": "PASS",
+        "inputValues": {
+          "property.type": "SFR"
+        },
+        "threshold": ["SFR", "CONDO", "TOWNHOUSE", "2_4_UNIT", "MULTIFAMILY"],
+        "actualValue": "SFR",
+        "message": "Property type is eligible"
+      },
+      {
+        "ruleId": "INVESTMENT_ONLY",
+        "ruleName": "Investment Property Requirement",
+        "category": "PROPERTY",
+        "result": "PASS",
+        "inputValues": {
+          "property.occupancy": "INVESTMENT"
+        },
+        "threshold": "INVESTMENT",
+        "actualValue": "INVESTMENT",
+        "message": "Property is investment property"
+      },
+      {
+        "ruleId": "LOAN_AMOUNT_MIN",
+        "ruleName": "Minimum Loan Amount",
+        "category": "LOAN",
+        "result": "PASS",
+        "inputValues": {
+          "loan.amount": 324000
+        },
+        "threshold": 100000,
+        "actualValue": 324000,
+        "message": "Loan amount meets minimum"
+      },
+      {
+        "ruleId": "LOAN_AMOUNT_MAX",
+        "ruleName": "Maximum Loan Amount",
+        "category": "LOAN",
+        "result": "PASS",
+        "inputValues": {
+          "loan.amount": 324000
+        },
+        "threshold": 3000000,
+        "actualValue": 324000,
+        "message": "Loan amount is within maximum"
+      },
+      {
+        "ruleId": "CASH_OUT_MAX",
+        "ruleName": "Maximum Cash-Out Amount",
+        "category": "LOAN",
+        "result": "PASS",
+        "inputValues": {
+          "loan.purpose": "CASH_OUT_REFI",
+          "loan.cashOutAmount": 44000,
+          "ltv.ratio": 0.72
+        },
+        "message": "Cash-out is within limits"
+      },
+      {
+        "ruleId": "RESERVES_MIN",
+        "ruleName": "Minimum Reserves",
+        "category": "BORROWER",
+        "result": "PASS",
+        "inputValues": {
+          "borrower.reservesMonths": 9
+        },
+        "threshold": 6,
+        "actualValue": 9,
+        "message": "Reserve requirement met"
+      },
+      {
+        "ruleId": "ENTITY_DOCS_REQUIRED",
+        "ruleName": "Entity Documentation Required",
+        "category": "BORROWER",
+        "result": "PASS",
+        "inputValues": {
+          "borrower.type": "INDIVIDUAL"
+        },
+        "message": "Entity documentation requirement met"
+      },
+      {
+        "ruleId": "RENT_ROLL_REQUIRED",
+        "ruleName": "Rent Roll Documentation",
+        "category": "PROPERTY",
+        "result": "PASS",
+        "inputValues": {
+          "documents.rentRollReceived": true
+        },
+        "message": "Rent roll documentation received"
+      },
+      {
+        "ruleId": "DSCR_PREFERRED",
+        "ruleName": "DSCR Below Preferred Level",
+        "category": "DSCR",
+        "result": "PASS",
+        "inputValues": {
+          "dscr.ratio": 1.28
+        },
+        "threshold": 1.25,
+        "actualValue": 1.28,
+        "message": "DSCR meets preferred level"
+      }
+    ],
+
+    "metrics": {
+      "rulesEvaluated": 12,
+      "rulesPassed": 12,
+      "rulesFailed": 0,
+      "rulesWarned": 0,
+      "rulesSkipped": 0,
+      "durationMs": 23
+    },
+
+    "evaluatedAt": "2024-01-15T10:35:00Z",
+    "syncedToEncompass": true
+  },
+
+  "example_denied": {
+    "id": "eval_01HXYZ123457",
+    "applicationId": "app_01HXYZ790",
+    "ruleVersionId": "rv_DSCR_ELIG_v2.1.0",
+
+    "evaluationType": "ELIGIBILITY",
+    "triggerEvent": "APPLICATION_SUBMITTED",
+
+    "overallResult": "DENIED",
+
+    "ruleResults": [
+      {
+        "ruleId": "DSCR_MIN",
+        "ruleName": "Minimum DSCR Requirement",
+        "category": "DSCR",
+        "result": "FAIL",
+        "inputValues": {
+          "dscr.ratio": 0.87
+        },
+        "threshold": 1.0,
+        "actualValue": 0.87,
+        "message": "DSCR is below minimum requirement of 1.0",
+        "conditionCreated": "cond_01HXYZ001"
+      },
+      {
+        "ruleId": "LTV_MAX",
+        "ruleName": "Maximum LTV Requirement",
+        "category": "LTV",
+        "result": "FAIL",
+        "inputValues": {
+          "ltv.ratio": 0.85
+        },
+        "threshold": 0.80,
+        "actualValue": 0.85,
+        "message": "LTV exceeds maximum of 80%"
+      },
+      {
+        "ruleId": "CREDIT_MIN",
+        "ruleName": "Minimum Credit Score",
+        "category": "CREDIT",
+        "result": "PASS",
+        "inputValues": {
+          "credit.score": 695
+        },
+        "threshold": 660,
+        "actualValue": 695,
+        "message": "Credit score meets minimum requirement"
+      }
+    ],
+
+    "metrics": {
+      "rulesEvaluated": 12,
+      "rulesPassed": 8,
+      "rulesFailed": 2,
+      "rulesWarned": 2,
+      "rulesSkipped": 0,
+      "durationMs": 19
+    },
+
+    "evaluatedAt": "2024-01-15T11:00:00Z",
+    "syncedToEncompass": true
+  },
+
+  "example_exception": {
+    "id": "eval_01HXYZ123458",
+    "applicationId": "app_01HXYZ791",
+    "ruleVersionId": "rv_DSCR_ELIG_v2.1.0",
+
+    "evaluationType": "ELIGIBILITY",
+    "triggerEvent": "APPLICATION_SUBMITTED",
+
+    "overallResult": "EXCEPTION",
+
+    "ruleResults": [
+      {
+        "ruleId": "DSCR_MIN",
+        "ruleName": "Minimum DSCR Requirement",
+        "category": "DSCR",
+        "result": "PASS",
+        "inputValues": {
+          "dscr.ratio": 1.05
+        },
+        "threshold": 1.0,
+        "actualValue": 1.05,
+        "message": "DSCR meets minimum requirement"
+      },
+      {
+        "ruleId": "RESERVES_MIN",
+        "ruleName": "Minimum Reserves",
+        "category": "BORROWER",
+        "result": "WARN",
+        "inputValues": {
+          "borrower.reservesMonths": 4
+        },
+        "threshold": 6,
+        "actualValue": 4,
+        "message": "Insufficient reserves (minimum 6 months required)",
+        "conditionCreated": "cond_01HXYZ002"
+      }
+    ],
+
+    "metrics": {
+      "rulesEvaluated": 12,
+      "rulesPassed": 10,
+      "rulesFailed": 0,
+      "rulesWarned": 2,
+      "rulesSkipped": 0,
+      "durationMs": 21
+    },
+
+    "evaluatedAt": "2024-01-15T11:15:00Z",
+    "syncedToEncompass": true
+  },
+
+  "encompass_field_mapping": {
+    "overallResult": "CX.ELIG_RESULT",
+    "ruleVersionId": "CX.ELIG_RULES_VERSION",
+    "evaluatedAt": "CX.ELIG_EVAL_DATE",
+    "failReasons": "CX.ELIG_FAIL_REASONS",
+    "warnings": "CX.ELIG_WARNINGS",
+    "exceptions": "CX.ELIG_EXCEPTIONS",
+    "metrics.rulesPassed": "CX.ELIG_SCORE"
+  }
+}

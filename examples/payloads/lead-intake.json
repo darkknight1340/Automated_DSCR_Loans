@@ -1,0 +1,173 @@
+{
+  "$schema": "Lead Intake Request Payload",
+  "description": "Example payload for creating a new lead in the DSCR platform",
+
+  "example_request": {
+    "externalId": "MKT-2024-001234",
+    "sourceId": "source_google_ads_001",
+    "contact": {
+      "firstName": "John",
+      "lastName": "Smith",
+      "email": "john.smith@example.com",
+      "phone": "+1-555-123-4567",
+      "phoneSecondary": "+1-555-987-6543"
+    },
+    "propertyInterest": {
+      "address": "123 Main Street",
+      "city": "Austin",
+      "state": "TX",
+      "zip": "78701",
+      "propertyType": "SFR",
+      "estimatedValue": 450000
+    },
+    "loanInterest": {
+      "purpose": "CASH_OUT_REFI",
+      "requestedAmount": 350000,
+      "estimatedRent": 3200,
+      "hasExistingMortgage": true,
+      "existingMortgageBalance": 280000
+    },
+    "qualification": {
+      "statedCreditScoreRange": "720-739",
+      "isEntityBorrower": false,
+      "entityName": null
+    },
+    "consent": {
+      "marketing": true,
+      "tcpa": true
+    },
+    "utmParams": {
+      "source": "google",
+      "medium": "cpc",
+      "campaign": "dscr_texas_q1_2024",
+      "content": "refinance_ad_v2"
+    }
+  },
+
+  "example_response": {
+    "success": true,
+    "data": {
+      "id": "lead_01HXYZ123456789ABCDEF",
+      "externalId": "MKT-2024-001234",
+      "sourceId": "source_google_ads_001",
+      "contact": {
+        "firstName": "John",
+        "lastName": "Smith",
+        "email": "john.smith@example.com",
+        "phone": "+15551234567",
+        "phoneSecondary": "+15559876543"
+      },
+      "propertyInterest": {
+        "address": "123 Main Street",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701",
+        "propertyType": "SFR",
+        "estimatedValue": {
+          "amount": 45000000,
+          "currency": "USD"
+        }
+      },
+      "loanInterest": {
+        "purpose": "CASH_OUT_REFI",
+        "requestedAmount": {
+          "amount": 35000000,
+          "currency": "USD"
+        },
+        "estimatedRent": {
+          "amount": 320000,
+          "currency": "USD"
+        },
+        "hasExistingMortgage": true,
+        "existingMortgageBalance": {
+          "amount": 28000000,
+          "currency": "USD"
+        }
+      },
+      "qualification": {
+        "statedCreditScoreRange": "720-739",
+        "isEntityBorrower": false,
+        "entityName": null
+      },
+      "status": "NEW",
+      "score": 78,
+      "assignedLoId": "lo_01HXYZ789",
+      "consent": {
+        "marketing": true,
+        "marketingAt": "2024-01-15T10:30:00Z",
+        "tcpa": true,
+        "tcpaAt": "2024-01-15T10:30:00Z"
+      },
+      "utmParams": {
+        "source": "google",
+        "medium": "cpc",
+        "campaign": "dscr_texas_q1_2024",
+        "content": "refinance_ad_v2"
+      },
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z"
+    },
+    "metadata": {
+      "requestId": "req_01HXYZ456",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "duration": 45
+    }
+  },
+
+  "example_entity_borrower_request": {
+    "externalId": "MKT-2024-001235",
+    "sourceId": "source_broker_referral_001",
+    "contact": {
+      "firstName": "Sarah",
+      "lastName": "Johnson",
+      "email": "sarah@johnsonproperties.com",
+      "phone": "+1-555-222-3333"
+    },
+    "propertyInterest": {
+      "address": "456 Oak Avenue",
+      "city": "Dallas",
+      "state": "TX",
+      "zip": "75201",
+      "propertyType": "2_4_UNIT",
+      "estimatedValue": 850000
+    },
+    "loanInterest": {
+      "purpose": "PURCHASE",
+      "requestedAmount": 637500,
+      "estimatedRent": 7500,
+      "hasExistingMortgage": false
+    },
+    "qualification": {
+      "statedCreditScoreRange": "740+",
+      "isEntityBorrower": true,
+      "entityName": "Johnson Properties LLC"
+    },
+    "consent": {
+      "marketing": true,
+      "tcpa": true
+    }
+  },
+
+  "validation_rules": {
+    "contact.email": {
+      "required": true,
+      "format": "email"
+    },
+    "loanInterest.purpose": {
+      "required": true,
+      "enum": ["PURCHASE", "RATE_TERM_REFI", "CASH_OUT_REFI"]
+    },
+    "propertyInterest.propertyType": {
+      "required": false,
+      "enum": ["SFR", "CONDO", "TOWNHOUSE", "2_4_UNIT", "MULTIFAMILY", "MIXED_USE"]
+    },
+    "propertyInterest.state": {
+      "required": false,
+      "pattern": "^[A-Z]{2}$"
+    },
+    "consent.tcpa": {
+      "required": true,
+      "description": "TCPA consent is required for outbound calling"
+    }
+  }
+}

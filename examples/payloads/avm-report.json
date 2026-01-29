@@ -1,0 +1,192 @@
+{
+  "$schema": "AVM Report Response Payload",
+  "description": "Example AVM (Automated Valuation Model) report from valuation vendor",
+
+  "example_corelogic_response": {
+    "id": "avm_01HXYZ123456",
+    "propertyId": "prop_01HXYZ789",
+    "applicationId": "app_01HXYZ456",
+
+    "orderId": "AVM-2024-001234",
+    "vendor": "CORELOGIC",
+    "productType": "CORELOGIC_COLLATERAL_ANALYTICS",
+
+    "valuation": {
+      "estimated": {
+        "amount": 45000000,
+        "currency": "USD"
+      },
+      "low": {
+        "amount": 41000000,
+        "currency": "USD"
+      },
+      "high": {
+        "amount": 49000000,
+        "currency": "USD"
+      },
+      "confidenceScore": 85,
+      "confidenceLevel": "HIGH",
+      "fsd": 0.089
+    },
+
+    "supportingData": {
+      "comparableCount": 12,
+      "lastSaleDate": "2021-06-15",
+      "lastSalePrice": {
+        "amount": 38500000,
+        "currency": "USD"
+      }
+    },
+
+    "status": "RECEIVED",
+
+    "reportData": {
+      "propertyDetails": {
+        "address": "123 Main Street",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701",
+        "county": "Travis",
+        "apn": "123-456-789",
+        "propertyType": "Single Family Residential",
+        "yearBuilt": 2015,
+        "squareFeet": 2200,
+        "lotSize": 7500,
+        "bedrooms": 4,
+        "bathrooms": 2.5
+      },
+      "marketAnalysis": {
+        "medianSalePrice": {
+          "amount": 42500000,
+          "currency": "USD"
+        },
+        "medianDaysOnMarket": 28,
+        "inventoryLevel": "LOW",
+        "priceAppreciation12Mo": 0.065,
+        "priceAppreciation36Mo": 0.185
+      },
+      "comparables": [
+        {
+          "address": "125 Main Street",
+          "saleDate": "2024-01-05",
+          "salePrice": 455000,
+          "squareFeet": 2150,
+          "distance": 0.1,
+          "adjustedValue": 458000
+        },
+        {
+          "address": "101 Oak Lane",
+          "saleDate": "2023-12-18",
+          "salePrice": 440000,
+          "squareFeet": 2100,
+          "distance": 0.3,
+          "adjustedValue": 448000
+        },
+        {
+          "address": "789 Elm Drive",
+          "saleDate": "2023-12-01",
+          "salePrice": 465000,
+          "squareFeet": 2300,
+          "distance": 0.4,
+          "adjustedValue": 452000
+        }
+      ],
+      "riskFactors": [],
+      "qualityScore": "A"
+    },
+
+    "orderedAt": "2024-01-15T10:00:00Z",
+    "receivedAt": "2024-01-15T10:00:45Z",
+    "valueAsOfDate": "2024-01-15",
+
+    "syncedToEncompass": true
+  },
+
+  "example_housecanary_response": {
+    "id": "avm_01HXYZ123457",
+    "propertyId": "prop_01HXYZ789",
+    "applicationId": "app_01HXYZ456",
+
+    "orderId": "AVM-2024-001235",
+    "vendor": "HOUSECANARY",
+    "productType": "HOUSECANARY_VALUE_REPORT",
+
+    "valuation": {
+      "estimated": {
+        "amount": 44800000,
+        "currency": "USD"
+      },
+      "low": {
+        "amount": 40300000,
+        "currency": "USD"
+      },
+      "high": {
+        "amount": 49300000,
+        "currency": "USD"
+      },
+      "confidenceScore": 78,
+      "confidenceLevel": "MEDIUM",
+      "fsd": 0.102
+    },
+
+    "status": "RECEIVED",
+    "orderedAt": "2024-01-15T10:00:00Z",
+    "receivedAt": "2024-01-15T10:01:12Z",
+    "valueAsOfDate": "2024-01-15",
+
+    "syncedToEncompass": true
+  },
+
+  "example_no_value_response": {
+    "id": "avm_01HXYZ123458",
+    "propertyId": "prop_01HXYZ790",
+    "applicationId": "app_01HXYZ457",
+
+    "orderId": "AVM-2024-001236",
+    "vendor": "CORELOGIC",
+    "productType": "CORELOGIC_COLLATERAL_ANALYTICS",
+
+    "valuation": {
+      "estimated": {
+        "amount": 0,
+        "currency": "USD"
+      },
+      "low": {
+        "amount": 0,
+        "currency": "USD"
+      },
+      "high": {
+        "amount": 0,
+        "currency": "USD"
+      },
+      "confidenceScore": 0,
+      "confidenceLevel": "LOW",
+      "fsd": null
+    },
+
+    "status": "NO_VALUE",
+
+    "reportData": {
+      "noValueReason": "INSUFFICIENT_DATA",
+      "noValueDescription": "Unable to generate value due to insufficient comparable sales data in the area. Property type or location may limit available data.",
+      "recommendation": "ORDER_APPRAISAL"
+    },
+
+    "orderedAt": "2024-01-15T10:00:00Z",
+    "receivedAt": "2024-01-15T10:00:30Z",
+
+    "syncedToEncompass": true
+  },
+
+  "encompass_field_mapping": {
+    "valuation.estimated": "CX.AVM_VALUE",
+    "valuation.confidenceLevel": "CX.AVM_CONFIDENCE",
+    "valuation.confidenceScore": "CX.AVM_CONFIDENCE_SCORE",
+    "valuation.fsd": "CX.AVM_FSD",
+    "vendor": "CX.AVM_PROVIDER",
+    "orderId": "CX.AVM_REPORT_ID",
+    "receivedAt": "CX.AVM_DATE",
+    "valuation.low": "CX.AVM_LOW",
+    "valuation.high": "CX.AVM_HIGH"
+  }
+}
