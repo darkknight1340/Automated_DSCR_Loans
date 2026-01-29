@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import analytics, applications, leads, offers
+from app.routers import analytics, applications, leads, offers, property, valuation
 from app.db.connection import init_db, close_db
 
 
@@ -42,6 +42,8 @@ app.include_router(leads.router, prefix="/api/v1/leads", tags=["Leads"])
 app.include_router(applications.router, prefix="/api/v1/applications", tags=["Applications"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
 app.include_router(offers.router, prefix="/api/v1/offers", tags=["Offers"])
+app.include_router(property.router, prefix="/api/v1/property", tags=["Property"])
+app.include_router(valuation.router, prefix="/api/v1/valuation", tags=["Valuation"])
 
 
 @app.get("/health")
