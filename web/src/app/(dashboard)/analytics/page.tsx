@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { FunnelChart } from '@/components/analytics/FunnelChart';
 import { ConversionMetrics } from '@/components/analytics/ConversionMetrics';
-import { MarketingMetrics } from '@/components/analytics/MarketingMetrics';
+import { ContactMethodMetrics, type ContactMethodData } from '@/components/analytics/ContactMethodMetrics';
 import {
   Select,
   SelectContent,
@@ -11,51 +11,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { FunnelMetrics, MarketingMetrics as MarketingMetricsType } from '@/types';
+import type { FunnelMetrics } from '@/types';
 
 // Mock data - will be replaced with API calls
 const mockFunnelData: FunnelMetrics = {
   stages: [
-    { stage: 'LEAD', count: 150, conversionRate: null },
-    { stage: 'CONTACTED', count: 120, conversionRate: 0.80 },
-    { stage: 'QUALIFIED', count: 90, conversionRate: 0.75 },
-    { stage: 'APPLICATION', count: 75, conversionRate: 0.83 },
-    { stage: 'PRE_APPROVED', count: 60, conversionRate: 0.80 },
-    { stage: 'FUNDED', count: 45, conversionRate: 0.75 },
+    { stage: 'Leads', count: 500, conversionRate: null },
+    { stage: 'Leads Verified/Qualified', count: 320, conversionRate: 0.64 },
+    { stage: 'Contacted', count: 240, conversionRate: 0.75 },
+    { stage: 'Reached Landing Page', count: 180, conversionRate: 0.75 },
+    { stage: 'Verified Information', count: 95, conversionRate: 0.53 },
+    { stage: 'Funded', count: 45, conversionRate: 0.47 },
   ],
-  overallConversion: 0.30,
+  overallConversion: 0.09,
   period: { from: '2024-01-01', to: '2024-01-31' },
 };
 
-const mockMarketingData: MarketingMetricsType = {
-  bySource: [
-    { source: 'Google Ads', leads: 50, conversions: 15, conversionRate: 0.30 },
-    { source: 'Facebook', leads: 35, conversions: 10, conversionRate: 0.29 },
-    { source: 'Referral', leads: 30, conversions: 12, conversionRate: 0.40 },
-    { source: 'Organic', leads: 25, conversions: 6, conversionRate: 0.24 },
-    { source: 'Partner', leads: 10, conversions: 2, conversionRate: 0.20 },
-  ],
-  emailMetrics: {
-    sent: 2500,
-    opened: 875,
-    openRate: 0.35,
-    clicked: 262,
-    ctr: 0.30,
-    converted: 45,
-  },
-  webMetrics: {
-    visitors: 8500,
-    leadSubmissions: 150,
-    conversionRate: 0.018,
-  },
-  period: { from: '2024-01-01', to: '2024-01-31' },
-};
+const mockContactMethodData: ContactMethodData[] = [
+  { method: 'voice_call', label: 'Voice Call', contacted: 85, converted: 38, conversionRate: 44.7 },
+  { method: 'email', label: 'Email', contacted: 120, converted: 42, conversionRate: 35.0 },
+  { method: 'text', label: 'Text Message', contacted: 65, converted: 20, conversionRate: 30.8 },
+  { method: 'physical_mail', label: 'Physical Mail', contacted: 30, converted: 5, conversionRate: 16.7 },
+];
 
 const conversionMetrics = [
-  { label: 'Lead to Contact', value: '80%', change: 5, changeLabel: 'vs last period' },
-  { label: 'Contact to Qualified', value: '75%', change: -2, changeLabel: 'vs last period' },
-  { label: 'Qualified to Application', value: '83%', change: 8, changeLabel: 'vs last period' },
-  { label: 'Application to Funded', value: '60%', change: 3, changeLabel: 'vs last period' },
+  { label: 'Lead to Verified', value: '64%', change: 5, changeLabel: 'vs last period' },
+  { label: 'Verified to Contacted', value: '75%', change: -2, changeLabel: 'vs last period' },
+  { label: 'Contacted to Landing Page', value: '75%', change: 8, changeLabel: 'vs last period' },
+  { label: 'Verified Info to Funded', value: '47%', change: 3, changeLabel: 'vs last period' },
 ];
 
 export default function AnalyticsPage() {
@@ -67,7 +50,7 @@ export default function AnalyticsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Funnel Analytics</h2>
           <p className="text-muted-foreground">
-            Track lead-to-funded conversion with marketing attribution
+            Track lead-to-funded conversion rates
           </p>
         </div>
         <Select value={period} onValueChange={setPeriod}>
@@ -93,10 +76,10 @@ export default function AnalyticsPage() {
         description="Conversion rates through each stage of the funnel"
       />
 
-      {/* Marketing Metrics */}
+      {/* Conversion by Contact Method */}
       <div>
-        <h3 className="mb-4 text-lg font-semibold">Marketing Performance</h3>
-        <MarketingMetrics data={mockMarketingData} />
+        <h3 className="mb-4 text-lg font-semibold">Conversion by Contact Method</h3>
+        <ContactMethodMetrics data={mockContactMethodData} />
       </div>
     </div>
   );

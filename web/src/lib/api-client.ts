@@ -3,7 +3,7 @@ import type {
   Application,
   Task,
   FunnelMetrics,
-  MarketingMetrics,
+  ContactMethodMetrics,
   PipelineMetrics,
   RiskDistribution,
   VelocityMetrics,
@@ -167,15 +167,15 @@ class ApiClient {
     return this.request<FunnelMetrics>(`/analytics/funnel?${searchParams}`);
   }
 
-  async getMarketingMetrics(params?: {
+  async getContactMethodMetrics(params?: {
     from?: string;
     to?: string;
-  }): Promise<MarketingMetrics> {
+  }): Promise<ContactMethodMetrics[]> {
     const searchParams = new URLSearchParams();
     if (params?.from) searchParams.set('from', params.from);
     if (params?.to) searchParams.set('to', params.to);
 
-    return this.request<MarketingMetrics>(`/analytics/marketing?${searchParams}`);
+    return this.request<ContactMethodMetrics[]>(`/analytics/contact-methods?${searchParams}`);
   }
 
   async getPipelineMetrics(params?: {

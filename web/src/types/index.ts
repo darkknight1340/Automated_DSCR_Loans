@@ -74,6 +74,12 @@ export interface Lead {
 export type ApplicationStatus = 'ACTIVE' | 'APPROVED' | 'DENIED' | 'WITHDRAWN' | 'SUSPENDED';
 
 export type Milestone =
+  | 'LEADS'
+  | 'LEADS_VERIFIED'
+  | 'CONTACTED'
+  | 'REACHED_LANDING'
+  | 'VERIFIED_INFO'
+  | 'FUNDED'
   | 'STARTED'
   | 'APPLICATION'
   | 'PRE_APPROVED'
@@ -85,7 +91,6 @@ export type Milestone =
   | 'DOCS_BACK'
   | 'CLEAR_TO_CLOSE'
   | 'CLOSING'
-  | 'FUNDED'
   | 'COMPLETION'
   | 'DENIED'
   | 'WITHDRAWN';
@@ -251,37 +256,14 @@ export interface FunnelMetrics {
   };
 }
 
-export interface MarketingSourceMetrics {
-  source: string;
-  leads: number;
-  conversions: number;
-  conversionRate: number;
-  revenue?: number;
-}
+export type ContactMethod = 'email' | 'physical_mail' | 'voice_call' | 'text';
 
-export interface EmailMetrics {
-  sent: number;
-  opened: number;
-  openRate: number;
-  clicked: number;
-  ctr: number;
+export interface ContactMethodMetrics {
+  method: ContactMethod;
+  label: string;
+  contacted: number;
   converted: number;
-}
-
-export interface WebMetrics {
-  visitors: number;
-  leadSubmissions: number;
   conversionRate: number;
-}
-
-export interface MarketingMetrics {
-  bySource: MarketingSourceMetrics[];
-  emailMetrics: EmailMetrics;
-  webMetrics: WebMetrics;
-  period: {
-    from: string;
-    to: string;
-  };
 }
 
 export interface PipelineMilestoneMetrics {

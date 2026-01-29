@@ -5,9 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
-  FileText,
   BarChart3,
-  ListTodo,
   Settings,
   TrendingUp,
   ChevronLeft,
@@ -38,23 +36,12 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Funnel', href: '/analytics' },
       { title: 'Pipeline', href: '/analytics/pipeline' },
-      { title: 'Risk', href: '/analytics/risk' },
     ],
   },
   {
     title: 'Leads',
     href: '/leads',
     icon: Users,
-  },
-  {
-    title: 'Applications',
-    href: '/applications',
-    icon: FileText,
-  },
-  {
-    title: 'Tasks',
-    href: '/tasks',
-    icon: ListTodo,
   },
 ];
 

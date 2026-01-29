@@ -14,15 +14,15 @@ export function useFunnelMetrics(params?: UseFunnelParams) {
   });
 }
 
-interface UseMarketingParams {
+interface UseContactMethodParams {
   from?: string;
   to?: string;
 }
 
-export function useMarketingMetrics(params?: UseMarketingParams) {
+export function useContactMethodMetrics(params?: UseContactMethodParams) {
   return useQuery({
-    queryKey: ['analytics', 'marketing', params],
-    queryFn: () => apiClient.getMarketingMetrics(params),
+    queryKey: ['analytics', 'contact-methods', params],
+    queryFn: () => apiClient.getContactMethodMetrics(params),
   });
 }
 

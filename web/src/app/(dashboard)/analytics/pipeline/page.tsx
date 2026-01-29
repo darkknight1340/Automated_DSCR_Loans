@@ -12,51 +12,30 @@ import {
 } from '@/components/ui/select';
 import type { PipelineMetrics } from '@/types';
 
-// Mock data - will be replaced with API calls
+// Mock data - matches funnel stages
 const mockPipelineData: PipelineMetrics = {
   byMilestone: [
-    { milestone: 'APPLICATION', count: 12, volumeCents: 420000000, avgDaysInStage: 0.8 },
-    { milestone: 'PRE_APPROVED', count: 18, volumeCents: 630000000, avgDaysInStage: 1.5 },
-    { milestone: 'PROCESSING', count: 25, volumeCents: 875000000, avgDaysInStage: 4.2 },
-    { milestone: 'SUBMITTED', count: 8, volumeCents: 280000000, avgDaysInStage: 2.1 },
-    { milestone: 'CONDITIONALLY_APPROVED', count: 15, volumeCents: 525000000, avgDaysInStage: 1.8 },
-    { milestone: 'APPROVED', count: 6, volumeCents: 210000000, avgDaysInStage: 0.5 },
-    { milestone: 'DOCS_OUT', count: 10, volumeCents: 350000000, avgDaysInStage: 1.2 },
-    { milestone: 'DOCS_BACK', count: 5, volumeCents: 175000000, avgDaysInStage: 0.8 },
-    { milestone: 'CLEAR_TO_CLOSE', count: 8, volumeCents: 280000000, avgDaysInStage: 0.6 },
-    { milestone: 'CLOSING', count: 4, volumeCents: 140000000, avgDaysInStage: 2.5 },
+    { milestone: 'LEADS', count: 500, volumeCents: 1750000000, avgDaysInStage: 0 },
+    { milestone: 'LEADS_VERIFIED', count: 320, volumeCents: 1120000000, avgDaysInStage: 1.2 },
+    { milestone: 'CONTACTED', count: 240, volumeCents: 840000000, avgDaysInStage: 2.5 },
+    { milestone: 'REACHED_LANDING', count: 180, volumeCents: 630000000, avgDaysInStage: 1.8 },
+    { milestone: 'VERIFIED_INFO', count: 95, volumeCents: 332500000, avgDaysInStage: 3.2 },
+    { milestone: 'FUNDED', count: 45, volumeCents: 157500000, avgDaysInStage: 5.5 },
   ],
-  slaBreaches: [
-    {
-      applicationId: 'app-001',
-      loanNumber: '2024-0123',
-      milestone: 'PROCESSING',
-      daysInStage: 6.2,
-      slaHours: 120,
-      breachedAt: '2024-01-15T10:30:00Z',
-    },
-    {
-      applicationId: 'app-002',
-      loanNumber: '2024-0098',
-      milestone: 'CLOSING',
-      daysInStage: 4.1,
-      slaHours: 72,
-      breachedAt: '2024-01-16T14:00:00Z',
-    },
-  ],
-  totalVolumeCents: 3885000000,
-  totalCount: 111,
+  slaBreaches: [],
+  totalVolumeCents: 4830000000,
+  totalCount: 1380,
 };
 
 const pipelineKPIs = [
-  { label: 'Total Pipeline', value: '$38.9M', change: 12, changeLabel: 'vs last month' },
-  { label: 'Active Loans', value: '111', change: 8, changeLabel: 'vs last month' },
-  { label: 'Avg Days to Fund', value: '18.5', change: -2, changeLabel: 'vs last month' },
-  { label: 'SLA Compliance', value: '94%', change: 3, changeLabel: 'vs last month' },
+  { label: 'Total Pipeline', value: '$48.3M', change: 12, changeLabel: 'vs last month' },
+  { label: 'Active Leads', value: '1,380', change: 8, changeLabel: 'vs last month' },
+  { label: 'Avg Days to Fund', value: '14.2', change: -2, changeLabel: 'vs last month' },
+  { label: 'Conversion Rate', value: '9%', change: 1, changeLabel: 'vs last month' },
 ];
 
 export default function PipelineAnalyticsPage() {
-  const [groupBy, setGroupBy] = useState('milestone');
+  const [period, setPeriod] = useState('30d');
 
   return (
     <div className="space-y-6">
@@ -64,17 +43,18 @@ export default function PipelineAnalyticsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Pipeline Analytics</h2>
           <p className="text-muted-foreground">
-            Real-time pipeline volume and aging analysis
+            Pipeline volume and conversion by stage
           </p>
         </div>
-        <Select value={groupBy} onValueChange={setGroupBy}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Group by" />
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="milestone">By Milestone</SelectItem>
-            <SelectItem value="lo">By Loan Officer</SelectItem>
-            <SelectItem value="processor">By Processor</SelectItem>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+            <SelectItem value="90d">Last 90 days</SelectItem>
+            <SelectItem value="ytd">Year to Date</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -82,7 +62,7 @@ export default function PipelineAnalyticsPage() {
       {/* Pipeline KPIs */}
       <ConversionMetrics metrics={pipelineKPIs} />
 
-      {/* Pipeline Aging Charts */}
+      {/* Pipeline Charts */}
       <PipelineAging data={mockPipelineData} />
     </div>
   );

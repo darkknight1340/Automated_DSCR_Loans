@@ -1,130 +1,59 @@
 /**
  * Applications Routes
  *
- * Endpoints for loan application management
+ * Endpoints for loan application management with Encompass integration.
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
-
-// In-memory store for demo (replace with database in production)
-const applicationsStore: Map<string, Application> = new Map();
-
-interface Application {
-  id: string;
-  leadId?: string;
-  borrower: {
-    name: string;
-    email: string;
-    phone?: string;
-    entityName?: string;
-  };
-  property: {
-    address: string;
-    city: string;
-    state: string;
-    zip: string;
-    type: string;
-    estimatedValue: number;
-    units: number;
-  };
-  loan: {
-    purpose: string;
-    amount: number;
-    termMonths: number;
-    interestRate?: number;
-  };
-  dscr?: {
-    ratio: number;
-    grossRent: number;
-    noi: number;
-    pitia: number;
-  };
-  ltv?: number;
-  status: string;
-  milestone: string;
-  conditions?: {
-    ptd: number;
-    ptc: number;
-    ptf: number;
-    cleared: number;
-  };
-  assignedLoId?: string;
-  assignedProcessorId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { applicationRepository, type Application } from '../db/repositories/ApplicationRepository.js';
+import { encompassService } from '../adapters/encompass/EncompassStubClient.js';
 
 interface ApplicationListQuery {
   page?: string;
   pageSize?: string;
   status?: string;
-  milestone?: string;
   assignedLOId?: string;
+  milestone?: string;
   search?: string;
 }
 
-// Seed sample data
-function seedApplications() {
-  if (applicationsStore.size === 0) {
-    const sampleApps: Omit<Application, 'id' | 'createdAt' | 'updatedAt'>[] = [
-      {
-        borrower: { name: 'ABC Investments LLC', email: 'contact@abcinv.com', entityName: 'ABC Investments LLC' },
-        property: { address: '100 Investment Way', city: 'Austin', state: 'TX', zip: '78701', type: 'SFR', estimatedValue: 500000, units: 1 },
-        loan: { purpose: 'CASH_OUT_REFI', amount: 375000, termMonths: 360, interestRate: 7.25 },
-        dscr: { ratio: 1.35, grossRent: 3200, noi: 2800, pitia: 2074 },
-        ltv: 75,
-        status: 'PROCESSING',
-        milestone: 'PROCESSING',
-        conditions: { ptd: 2, ptc: 3, ptf: 1, cleared: 5 },
-      },
-      {
-        borrower: { name: 'John Davis', email: 'john.davis@email.com' },
-        property: { address: '250 Rental Blvd', city: 'Dallas', state: 'TX', zip: '75201', type: 'DUPLEX', estimatedValue: 650000, units: 2 },
-        loan: { purpose: 'PURCHASE', amount: 520000, termMonths: 360, interestRate: 7.5 },
-        dscr: { ratio: 1.22, grossRent: 5400, noi: 4700, pitia: 3852 },
-        ltv: 80,
-        status: 'UNDERWRITING',
-        milestone: 'SUBMITTED_TO_UW',
-        conditions: { ptd: 0, ptc: 5, ptf: 2, cleared: 8 },
-      },
-      {
-        borrower: { name: 'Sunrise Properties LLC', email: 'info@sunriseprop.com', entityName: 'Sunrise Properties LLC' },
-        property: { address: '500 Beach Dr', city: 'Galveston', state: 'TX', zip: '77550', type: 'SFR', estimatedValue: 420000, units: 1 },
-        loan: { purpose: 'RATE_TERM_REFI', amount: 315000, termMonths: 360, interestRate: 6.99 },
-        dscr: { ratio: 1.48, grossRent: 4800, noi: 4200, pitia: 2838 },
-        ltv: 75,
-        status: 'APPROVED',
-        milestone: 'CLEAR_TO_CLOSE',
-        conditions: { ptd: 0, ptc: 0, ptf: 2, cleared: 12 },
-      },
-      {
-        borrower: { name: 'Maria Garcia', email: 'maria.g@email.com' },
-        property: { address: '888 STR Lane', city: 'San Antonio', state: 'TX', zip: '78201', type: 'SFR', estimatedValue: 380000, units: 1 },
-        loan: { purpose: 'CASH_OUT_REFI', amount: 285000, termMonths: 360, interestRate: 7.375 },
-        dscr: { ratio: 1.15, grossRent: 6200, noi: 5400, pitia: 4696 },
-        ltv: 75,
-        status: 'APPLICATION',
-        milestone: 'PRE_APPROVED',
-        conditions: { ptd: 4, ptc: 6, ptf: 3, cleared: 2 },
-      },
-    ];
-
-    sampleApps.forEach((app) => {
-      const id = uuidv4();
-      applicationsStore.set(id, {
-        ...app,
-        id,
-        createdAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(),
-      });
-    });
-  }
+interface ApplicationCreateBody {
+  leadId?: string;
+  borrower: {
+    borrowerType: 'INDIVIDUAL' | 'ENTITY';
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    entityName?: string;
+    entityType?: 'LLC' | 'CORPORATION' | 'PARTNERSHIP' | 'TRUST';
+  };
+  property: {
+    address: string;
+    unit?: string;
+    city: string;
+    state: string;
+    zip: string;
+    propertyType: string;
+    yearBuilt?: number;
+    squareFeet?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    units?: number;
+    currentMonthlyRent?: number;
+    isShortTermRental?: boolean;
+  };
+  loanPurpose: string;
+  loanAmount: number;
+  loanTermMonths?: number;
+  purchasePrice?: number;
+  estimatedValue?: number;
+  existingLiensTotal?: number;
+  cashOutAmount?: number;
 }
 
 export async function applicationsRoutes(fastify: FastifyInstance) {
-  seedApplications();
-
   /**
    * GET /applications
    * List applications with pagination and filters
@@ -133,64 +62,70 @@ export async function applicationsRoutes(fastify: FastifyInstance) {
     request: FastifyRequest<{ Querystring: ApplicationListQuery }>,
     reply: FastifyReply
   ) => {
-    const { page = '1', pageSize = '20', status, milestone, assignedLOId, search } = request.query;
+    const { page = '1', pageSize = '20', status, assignedLOId, milestone, search } = request.query;
 
-    let applications = Array.from(applicationsStore.values());
+    const { applications, total } = await applicationRepository.findAll({
+      page: parseInt(page, 10),
+      pageSize: parseInt(pageSize, 10),
+      status,
+      assignedLoId: assignedLOId,
+      milestone,
+      search,
+    });
 
-    // Apply filters
-    if (status) {
-      applications = applications.filter(a => a.status === status);
-    }
-    if (milestone) {
-      applications = applications.filter(a => a.milestone === milestone);
-    }
-    if (assignedLOId) {
-      applications = applications.filter(a => a.assignedLoId === assignedLOId);
-    }
-    if (search) {
-      const searchLower = search.toLowerCase();
-      applications = applications.filter(a =>
-        a.borrower.name.toLowerCase().includes(searchLower) ||
-        a.property.address.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Sort by created date descending
-    applications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-    // Paginate
     const pageNum = parseInt(page, 10);
     const pageSizeNum = parseInt(pageSize, 10);
-    const start = (pageNum - 1) * pageSizeNum;
-    const paginatedApps = applications.slice(start, start + pageSizeNum);
+
+    // Enrich with Encompass data
+    const enrichedApps = await Promise.all(
+      applications.map(async (app) => {
+        const link = await applicationRepository.getEncompassLink(app.id);
+        return {
+          ...app,
+          encompass: link ? {
+            loanGuid: link.encompassLoanGuid,
+            loanNumber: link.encompassLoanNumber,
+            milestone: link.currentMilestone,
+            syncStatus: link.syncStatus,
+            lastSync: link.lastSyncToEncompass,
+          } : null,
+        };
+      })
+    );
 
     return {
-      data: paginatedApps,
+      data: enrichedApps,
       pagination: {
         page: pageNum,
         pageSize: pageSizeNum,
-        totalItems: applications.length,
-        totalPages: Math.ceil(applications.length / pageSizeNum),
-        hasMore: start + pageSizeNum < applications.length,
+        totalItems: total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        hasMore: pageNum * pageSizeNum < total,
       },
     };
   });
 
   /**
    * GET /applications/:id
-   * Get application by ID
+   * Get application by ID with full details
    */
   fastify.get('/:id', async (
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
-    const app = applicationsStore.get(request.params.id);
+    const application = await applicationRepository.findById(request.params.id);
 
-    if (!app) {
+    if (!application) {
       return reply.status(404).send({ error: 'Application not found' });
     }
 
-    return app;
+    // Get Encompass status
+    const encompassStatus = await encompassService.getLoanStatus(request.params.id);
+
+    return {
+      ...application,
+      encompass: encompassStatus,
+    };
   });
 
   /**
@@ -201,37 +136,183 @@ export async function applicationsRoutes(fastify: FastifyInstance) {
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
-    const app = applicationsStore.get(request.params.id);
+    const app = await applicationRepository.findById(request.params.id);
 
     if (!app) {
       return reply.status(404).send({ error: 'Application not found' });
     }
 
-    // Return detailed DSCR breakdown
+    const estimatedValue = app.estimatedValue || 0;
+    const monthlyRent = app.property?.currentMonthlyRent || 0;
+
+    // Calculate DSCR components
+    const grossMonthlyRent = monthlyRent;
+    const vacancyRate = 0.05;
+    const effectiveGrossRent = grossMonthlyRent * (1 - vacancyRate);
+
+    const propertyTax = Math.round((estimatedValue * 0.02) / 12);
+    const insurance = Math.round((estimatedValue * 0.0035) / 12);
+    const management = Math.round(grossMonthlyRent * 0.08);
+
+    const noi = effectiveGrossRent - propertyTax - insurance - management;
+
+    // Calculate P&I (simplified 30-year fixed at estimated rate)
+    const rate = 0.075; // 7.5% assumed
+    const monthlyRate = rate / 12;
+    const numPayments = app.loanTermMonths || 360;
+    const pi = app.loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+      (Math.pow(1 + monthlyRate, numPayments) - 1);
+
+    const totalPITIA = pi + propertyTax + insurance;
+    const dscrRatio = totalPITIA > 0 ? noi / totalPITIA : 0;
+
     return {
       applicationId: app.id,
-      dscrRatio: app.dscr?.ratio || 0,
+      dscrRatio: Math.round(dscrRatio * 100) / 100,
       income: {
-        grossMonthlyRent: app.dscr?.grossRent || 0,
-        vacancyRate: 0.05,
-        effectiveGrossRent: (app.dscr?.grossRent || 0) * 0.95,
+        grossMonthlyRent,
+        vacancyRate,
+        effectiveGrossRent: Math.round(effectiveGrossRent),
       },
       expenses: {
-        propertyTax: Math.round((app.property.estimatedValue * 0.02) / 12),
-        insurance: Math.round((app.property.estimatedValue * 0.0035) / 12),
+        propertyTax,
+        insurance,
         hoa: 0,
-        management: Math.round((app.dscr?.grossRent || 0) * 0.08),
+        management,
       },
-      noi: app.dscr?.noi || 0,
+      noi: Math.round(noi),
       debtService: {
-        principalAndInterest: Math.round((app.dscr?.pitia || 0) * 0.7),
-        taxes: Math.round((app.dscr?.pitia || 0) * 0.15),
-        insurance: Math.round((app.dscr?.pitia || 0) * 0.1),
-        hoa: Math.round((app.dscr?.pitia || 0) * 0.05),
-        totalPITIA: app.dscr?.pitia || 0,
+        principalAndInterest: Math.round(pi),
+        taxes: propertyTax,
+        insurance: insurance,
+        hoa: 0,
+        totalPITIA: Math.round(totalPITIA),
       },
       calculatedAt: new Date(),
     };
+  });
+
+  /**
+   * POST /applications
+   * Create new application
+   */
+  fastify.post('/', async (
+    request: FastifyRequest<{ Body: ApplicationCreateBody }>,
+    reply: FastifyReply
+  ) => {
+    const body = request.body;
+
+    // Create borrower
+    const borrower = await applicationRepository.createBorrower({
+      borrowerType: body.borrower.borrowerType,
+      firstName: body.borrower.firstName,
+      lastName: body.borrower.lastName,
+      email: body.borrower.email,
+      phone: body.borrower.phone,
+      entityName: body.borrower.entityName,
+      entityType: body.borrower.entityType,
+    });
+
+    // Create property
+    const property = await applicationRepository.createProperty({
+      address: body.property.address,
+      unit: body.property.unit,
+      city: body.property.city,
+      state: body.property.state,
+      zip: body.property.zip,
+      propertyType: body.property.propertyType,
+      yearBuilt: body.property.yearBuilt,
+      squareFeet: body.property.squareFeet,
+      bedrooms: body.property.bedrooms,
+      bathrooms: body.property.bathrooms,
+      units: body.property.units || 1,
+      currentMonthlyRent: body.property.currentMonthlyRent,
+      isShortTermRental: body.property.isShortTermRental,
+    });
+
+    // Calculate LTV
+    const estimatedValue = body.estimatedValue || body.purchasePrice || 0;
+    const ltvRatio = estimatedValue > 0 ? body.loanAmount / estimatedValue : undefined;
+
+    // Create application
+    const application = await applicationRepository.create({
+      leadId: body.leadId,
+      borrowerId: borrower.id,
+      propertyId: property.id,
+      borrower,
+      property,
+      loanPurpose: body.loanPurpose,
+      loanAmount: body.loanAmount,
+      loanTermMonths: body.loanTermMonths || 360,
+      purchasePrice: body.purchasePrice,
+      estimatedValue,
+      existingLiensTotal: body.existingLiensTotal,
+      ltvRatio,
+      cashOutAmount: body.cashOutAmount,
+      status: 'APPLICATION',
+    });
+
+    // Create loan in Encompass
+    try {
+      const link = await encompassService.createLoanFromApplication(application.id);
+      console.log(`Created Encompass loan ${link.encompassLoanNumber} for application ${application.id}`);
+    } catch (error) {
+      console.error('Failed to create Encompass loan:', error);
+      // Don't fail the request - application is created, Encompass sync can be retried
+    }
+
+    return reply.status(201).send(application);
+  });
+
+  /**
+   * PATCH /applications/:id
+   * Update application
+   */
+  fastify.patch('/:id', async (
+    request: FastifyRequest<{ Params: { id: string }; Body: Partial<Application> }>,
+    reply: FastifyReply
+  ) => {
+    const existing = await applicationRepository.findById(request.params.id);
+
+    if (!existing) {
+      return reply.status(404).send({ error: 'Application not found' });
+    }
+
+    const updated = await applicationRepository.update(request.params.id, request.body);
+
+    // Sync to Encompass if linked
+    try {
+      const link = await applicationRepository.getEncompassLink(request.params.id);
+      if (link) {
+        await encompassService.syncToEncompass(request.params.id, request.body as Record<string, unknown>);
+      }
+    } catch (error) {
+      console.error('Failed to sync to Encompass:', error);
+    }
+
+    return updated;
+  });
+
+  /**
+   * POST /applications/:id/status
+   * Update application status
+   */
+  fastify.post('/:id/status', async (
+    request: FastifyRequest<{ Params: { id: string }; Body: { status: string } }>,
+    reply: FastifyReply
+  ) => {
+    const existing = await applicationRepository.findById(request.params.id);
+
+    if (!existing) {
+      return reply.status(404).send({ error: 'Application not found' });
+    }
+
+    const updated = await applicationRepository.update(request.params.id, {
+      status: request.body.status,
+      submittedAt: request.body.status === 'PROCESSING' ? new Date() : existing.submittedAt,
+    });
+
+    return updated;
   });
 
   /**
@@ -242,13 +323,13 @@ export async function applicationsRoutes(fastify: FastifyInstance) {
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
-    const app = applicationsStore.get(request.params.id);
+    const app = await applicationRepository.findById(request.params.id);
 
     if (!app) {
       return reply.status(404).send({ error: 'Application not found' });
     }
 
-    // Sample document list
+    // Sample document list (would come from document service in production)
     return {
       applicationId: app.id,
       documents: [
@@ -261,83 +342,163 @@ export async function applicationsRoutes(fastify: FastifyInstance) {
   });
 
   /**
-   * GET /applications/:id/conditions
-   * Get conditions for application
+   * POST /applications/:id/encompass/create
+   * Create Encompass loan for application (if not exists)
    */
-  fastify.get('/:id/conditions', async (
+  fastify.post('/:id/encompass/create', async (
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
-    const app = applicationsStore.get(request.params.id);
+    const existing = await applicationRepository.findById(request.params.id);
 
-    if (!app) {
+    if (!existing) {
       return reply.status(404).send({ error: 'Application not found' });
     }
 
-    // Sample conditions
-    return {
-      applicationId: app.id,
-      conditions: [
-        { id: uuidv4(), code: 'PTD-001', category: 'PTD', title: 'Verify Entity Good Standing', status: 'OPEN' },
-        { id: uuidv4(), code: 'PTD-002', category: 'PTD', title: 'Confirm LLC Ownership', status: 'CLEARED' },
-        { id: uuidv4(), code: 'PTC-001', category: 'PTC', title: 'Final Title Commitment', status: 'OPEN' },
-        { id: uuidv4(), code: 'PTC-002', category: 'PTC', title: 'Hazard Insurance Binder', status: 'OPEN' },
-        { id: uuidv4(), code: 'PTF-001', category: 'PTF', title: 'Wire Instructions', status: 'OPEN' },
-      ],
-      summary: app.conditions,
-    };
+    try {
+      const link = await encompassService.createLoanFromApplication(request.params.id);
+      return {
+        success: true,
+        loanGuid: link.encompassLoanGuid,
+        loanNumber: link.encompassLoanNumber,
+        milestone: link.currentMilestone,
+      };
+    } catch (error) {
+      return reply.status(500).send({
+        error: 'Failed to create Encompass loan',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   });
 
   /**
-   * POST /applications
-   * Create new application
+   * POST /applications/:id/encompass/sync
+   * Force sync application to Encompass
    */
-  fastify.post('/', async (
-    request: FastifyRequest<{ Body: Partial<Application> }>,
+  fastify.post('/:id/encompass/sync', async (
+    request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
-    const body = request.body;
+    const existing = await applicationRepository.findById(request.params.id);
 
-    if (!body.borrower?.email || !body.property?.address) {
-      return reply.status(400).send({ error: 'Borrower email and property address are required' });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Application not found' });
     }
 
-    const id = uuidv4();
-    const app: Application = {
-      id,
-      leadId: body.leadId,
-      borrower: {
-        name: body.borrower.name || '',
-        email: body.borrower.email,
-        phone: body.borrower.phone,
-        entityName: body.borrower.entityName,
-      },
-      property: {
-        address: body.property.address,
-        city: body.property.city || '',
-        state: body.property.state || '',
-        zip: body.property.zip || '',
-        type: body.property.type || 'SFR',
-        estimatedValue: body.property.estimatedValue || 0,
-        units: body.property.units || 1,
-      },
-      loan: {
-        purpose: body.loan?.purpose || 'CASH_OUT_REFI',
-        amount: body.loan?.amount || 0,
-        termMonths: body.loan?.termMonths || 360,
-        interestRate: body.loan?.interestRate,
-      },
-      dscr: body.dscr,
-      ltv: body.ltv,
-      status: 'APPLICATION',
-      milestone: 'APPLICATION',
-      conditions: { ptd: 0, ptc: 0, ptf: 0, cleared: 0 },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const link = await applicationRepository.getEncompassLink(request.params.id);
+    if (!link) {
+      return reply.status(400).send({ error: 'Application not linked to Encompass' });
+    }
 
-    applicationsStore.set(id, app);
+    try {
+      await encompassService.syncToEncompass(request.params.id, existing as unknown as Record<string, unknown>);
+      const updatedLink = await applicationRepository.getEncompassLink(request.params.id);
+      return {
+        success: true,
+        syncStatus: updatedLink?.syncStatus,
+        lastSync: updatedLink?.lastSyncToEncompass,
+      };
+    } catch (error) {
+      return reply.status(500).send({
+        error: 'Sync failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
 
-    return reply.status(201).send(app);
+  /**
+   * POST /applications/:id/encompass/milestone
+   * Advance milestone in Encompass
+   */
+  fastify.post('/:id/encompass/milestone', async (
+    request: FastifyRequest<{ Params: { id: string }; Body: { milestone: string; reason?: string } }>,
+    reply: FastifyReply
+  ) => {
+    const existing = await applicationRepository.findById(request.params.id);
+
+    if (!existing) {
+      return reply.status(404).send({ error: 'Application not found' });
+    }
+
+    const link = await applicationRepository.getEncompassLink(request.params.id);
+    if (!link) {
+      return reply.status(400).send({ error: 'Application not linked to Encompass' });
+    }
+
+    try {
+      await encompassService.advanceMilestone(
+        request.params.id,
+        request.body.milestone,
+        request.body.reason
+      );
+
+      const updatedLink = await applicationRepository.getEncompassLink(request.params.id);
+      return {
+        success: true,
+        previousMilestone: link.currentMilestone,
+        currentMilestone: updatedLink?.currentMilestone,
+      };
+    } catch (error) {
+      return reply.status(500).send({
+        error: 'Failed to advance milestone',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /applications/:id/encompass/conditions
+   * Get conditions from Encompass
+   */
+  fastify.get('/:id/encompass/conditions', async (
+    request: FastifyRequest<{ Params: { id: string } }>,
+    reply: FastifyReply
+  ) => {
+    const existing = await applicationRepository.findById(request.params.id);
+
+    if (!existing) {
+      return reply.status(404).send({ error: 'Application not found' });
+    }
+
+    const status = await encompassService.getLoanStatus(request.params.id);
+    if (!status) {
+      return reply.status(400).send({ error: 'Application not linked to Encompass' });
+    }
+
+    return { data: status.conditions };
+  });
+
+  /**
+   * POST /applications/:id/encompass/conditions
+   * Add condition to Encompass loan
+   */
+  fastify.post('/:id/encompass/conditions', async (
+    request: FastifyRequest<{
+      Params: { id: string };
+      Body: { title: string; description?: string; category: string; priorTo: string }
+    }>,
+    reply: FastifyReply
+  ) => {
+    const existing = await applicationRepository.findById(request.params.id);
+
+    if (!existing) {
+      return reply.status(404).send({ error: 'Application not found' });
+    }
+
+    try {
+      const condition = await encompassService.addCondition(request.params.id, {
+        title: request.body.title,
+        description: request.body.description,
+        category: request.body.category,
+        priorTo: request.body.priorTo,
+      });
+
+      return reply.status(201).send(condition);
+    } catch (error) {
+      return reply.status(500).send({
+        error: 'Failed to add condition',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   });
 }

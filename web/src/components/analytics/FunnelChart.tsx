@@ -78,11 +78,16 @@ export function FunnelChart({ stages, title = 'Conversion Funnel', description }
             <BarChart
               data={chartData}
               layout="vertical"
-              margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" />
-              <YAxis type="category" dataKey="name" width={80} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={140}
+                tick={{ fontSize: 11 }}
+              />
               <Tooltip />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                 {chartData.map((entry, index) => (
@@ -96,21 +101,25 @@ export function FunnelChart({ stages, title = 'Conversion Funnel', description }
 
         {/* Stage-to-stage conversion rates */}
         <div className="mt-4 flex flex-wrap gap-2">
-          {stages.slice(1).map((stage, index) => (
-            <div
-              key={stage.stage}
-              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm"
-            >
-              <span className="text-muted-foreground">
-                {stageLabels[stages[index].stage]} &rarr; {stageLabels[stage.stage]}
-              </span>
-              <span className="font-medium" style={{ color: COLORS[index + 1] }}>
-                {stage.conversionRate !== null
-                  ? `${(stage.conversionRate * 100).toFixed(1)}%`
-                  : '-'}
-              </span>
-            </div>
-          ))}
+          {stages.slice(1).map((stage, index) => {
+            const fromStage = stageLabels[stages[index].stage] || stages[index].stage;
+            const toStage = stageLabels[stage.stage] || stage.stage;
+            return (
+              <div
+                key={stage.stage}
+                className="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs"
+              >
+                <span className="text-muted-foreground">
+                  {fromStage} &rarr; {toStage}
+                </span>
+                <span className="font-medium" style={{ color: COLORS[index + 1] }}>
+                  {stage.conversionRate !== null
+                    ? `${(stage.conversionRate * 100).toFixed(0)}%`
+                    : '-'}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
