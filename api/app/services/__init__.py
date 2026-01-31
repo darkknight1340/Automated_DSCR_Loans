@@ -6,6 +6,7 @@ from app.services.pricing import pricing_engine
 from app.services.rules import rules_engine
 from app.services.decision import decision_service
 from app.services.workflow import workflow_engine
+from app.services.ingest import ingest_service
 
 __all__ = [
     "dscr_calculator",
@@ -14,4 +15,5 @@ __all__ = [
     "rules_engine",
     "decision_service",
     "workflow_engine",
+    "ingest_service",
 ]
