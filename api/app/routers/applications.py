@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.auth import get_current_user
 
 from app.models.application import (
     Application,
@@ -21,7 +23,7 @@ from app.models.application import (
 )
 from app.models.common import PaginatedResponse, Pagination
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # In-memory storage
 _applications_store: dict[str, Application] = {}

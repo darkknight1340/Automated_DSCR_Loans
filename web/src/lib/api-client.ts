@@ -15,16 +15,18 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+type TokenGetter = () => Promise<string | null>;
+
 class ApiClient {
   private baseUrl: string;
-  private token: string | null = null;
+  private tokenGetter: TokenGetter | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
-  setToken(token: string | null) {
-    this.token = token;
+  setTokenGetter(getter: TokenGetter | null) {
+    this.tokenGetter = getter;
   }
 
   private async request<T>(
@@ -36,8 +38,12 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    // Get fresh token for each request
+    if (this.tokenGetter) {
+      const token = await this.tokenGetter();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {

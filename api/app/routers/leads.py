@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.models.lead import Lead, LeadCreate, LeadUpdate, LeadStatus, LeadSource
+from app.auth import get_current_user, FirebaseUser
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # ---------------------------------------------------------------------------

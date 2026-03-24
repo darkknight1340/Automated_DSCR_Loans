@@ -11,11 +11,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import analytics, applications, ingest, leads, offers, property, valuation, validation
 from app.db.connection import init_db, close_db
+from app.auth import init_firebase
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler for startup/shutdown."""
+    init_firebase()
     await init_db()
     yield
     await close_db()
@@ -34,7 +36,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://*.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
