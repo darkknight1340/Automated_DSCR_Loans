@@ -565,7 +565,8 @@ class IngestService:
 
             # Initialize data sources tracking
             sources = DataSources()
-            sources.property_source = "PropertyReach"
+            # Property data comes from DataTree (PropertyReach not used)
+            sources.property_source = processed.property_data.get("source", "DataTree") if processed.property_data else "DataTree"
             processed.data_sources = sources
 
             addr_str = f"{address.street}, {address.city}, {address.state} {address.zip}"
@@ -1170,6 +1171,7 @@ class IngestService:
                     "total_loan_balance": report.equity.total_mortgage_balance,
                     "equity": report.equity.estimated_equity,
                     "ltv": report.equity.ltv_ratio,
+                    "source": "PropertyReach",
                 }, raw
         except Exception as e:
             print(f"PropertyReach fetch failed: {e}")

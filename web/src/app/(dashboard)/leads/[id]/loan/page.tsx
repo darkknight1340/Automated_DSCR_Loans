@@ -473,7 +473,7 @@ export default function LoanDetailPage() {
                     <p className="font-medium">{a.encompassValidation.ownerComparison.encompassOwner || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Pipeline Owner <span className="text-xs">({a?.dataSources?.property ?? 'DataTree'})</span></p>
+                    <p className="text-xs text-muted-foreground">Pipeline Owner <span className="text-xs">(DataTree)</span></p>
                     <p className="font-medium">{a.encompassValidation.ownerComparison.pipelineOwner || '-'}</p>
                   </div>
                 </div>
@@ -523,7 +523,7 @@ export default function LoanDetailPage() {
                     <p className="font-medium">{fmt(a.encompassValidation.rentComparison.encompassImpliedRent)}/mo</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Pipeline Rent <span className="text-xs">({a?.dataSources?.rent ?? 'RentCast'})</span></p>
+                    <p className="text-xs text-muted-foreground">Pipeline Rent <span className="text-xs">({a?.rent?.source ?? a?.dataSources?.rent ?? 'Pipeline'})</span></p>
                     <p className="font-medium">{fmt(a.encompassValidation.rentComparison.pipelineRent)}/mo</p>
                   </div>
                   <div>
@@ -551,7 +551,7 @@ export default function LoanDetailPage() {
                       <tr className="border-b">
                         <th className="py-2 text-left font-medium text-muted-foreground">Field</th>
                         <th className="py-2 text-right font-medium text-muted-foreground">Encompass <span className="font-normal">(Encompass)</span></th>
-                        <th className="py-2 text-right font-medium text-muted-foreground">Pipeline <span className="font-normal">({a?.dataSources?.property ?? 'DataTree'})</span></th>
+                        <th className="py-2 text-right font-medium text-muted-foreground">Pipeline <span className="font-normal">(DataTree)</span></th>
                         <th className="py-2 text-center font-medium text-muted-foreground">Match</th>
                       </tr>
                     </thead>
@@ -607,7 +607,7 @@ export default function LoanDetailPage() {
                     )}
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Pipeline Total Balance <span className="text-xs">({a?.dataSources?.property ?? 'DataTree'})</span></p>
+                    <p className="text-xs text-muted-foreground">Pipeline Total Balance <span className="text-xs">(DataTree)</span></p>
                     <p className="font-medium">{fmt(a.encompassValidation.lienComparison.pipelineTotalBalance)}</p>
                     <p className="text-xs text-muted-foreground">{a.encompassValidation.lienComparison.pipelineLoans} loan(s) found</p>
                   </div>
