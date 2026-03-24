@@ -495,7 +495,7 @@ export default function LoanDetailPage() {
                     <p className="font-medium">{fmt(a.encompassValidation.avmComparison.encompassValue)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Pipeline AVM <span className="text-xs">({a?.dataSources?.avm ?? 'RentCast'})</span></p>
+                    <p className="text-xs text-muted-foreground">Pipeline AVM <span className="text-xs">({a.encompassValidation.avmComparison.pipelineSource ?? a?.dataSources?.avm ?? 'RentCast'})</span></p>
                     <p className="font-medium">{fmt(a.encompassValidation.avmComparison.pipelineValue)}</p>
                   </div>
                   <div>
@@ -523,7 +523,7 @@ export default function LoanDetailPage() {
                     <p className="font-medium">{fmt(a.encompassValidation.rentComparison.encompassImpliedRent)}/mo</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Pipeline Rent <span className="text-xs">({a?.rent?.source ?? a?.dataSources?.rent ?? 'Pipeline'})</span></p>
+                    <p className="text-xs text-muted-foreground">Pipeline Rent <span className="text-xs">({a.encompassValidation.rentComparison.pipelineSource ?? a?.rent?.source ?? 'RentCast'})</span></p>
                     <p className="font-medium">{fmt(a.encompassValidation.rentComparison.pipelineRent)}/mo</p>
                   </div>
                   <div>

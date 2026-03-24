@@ -24,15 +24,28 @@ def _calculate_piti_breakdown_dict(
     processed: Any,
     prop: dict[str, Any],
     enc: dict[str, Any] | None = None,
+    loan_amount_source: str = "Encompass",
+    loan_amount_dollars: float | None = None,
 ) -> dict[str, Any]:
     """Calculate PITI breakdown using forward loan calculation.
 
-    P&I is calculated directly from loan terms (amount, rate, term).
+    P&I is calculated directly from loan terms (amount, fixed 4.99% rate, 30yr term).
     Taxes from DataTree, Insurance estimated at 0.35% of property value.
     """
-    # Get loan details (from Encompass if available)
-    loan_amount = enc.get("loan_amount", 0) if enc else 0
-    interest_rate = enc.get("interest_rate", 0) if enc else 0
+    # Defensive: ensure prop is a dict
+    if not isinstance(prop, dict):
+        prop = {}
+
+    # Use provided loan amount, or get from pipeline/property data
+    if loan_amount_dollars is not None:
+        loan_amount = loan_amount_dollars
+    elif prop.get("total_loan_balance"):
+        loan_amount = prop.get("total_loan_balance", 0) / 100  # Convert cents to dollars
+    else:
+        loan_amount = 0
+
+    # Fixed interest rate for all DSCR calculations
+    interest_rate = 4.99  # Fixed rate per business rules
     loan_term_years = 30  # Standard DSCR loan term
 
     # Get property value for insurance estimate (prefer AVM, fall back to assessed)
@@ -69,42 +82,42 @@ def _calculate_piti_breakdown_dict(
 
     if not loan_amount:
         return {
-            "principal_interest": None,
+            "principalInterest": None,
             "taxes": None,
             "insurance": None,
             "total": None,
         }
 
     return {
-        # Principal & Interest (calculated from loan terms)
-        "principal_interest": round(monthly_pi, 2),
-        "principal_interest_calc": f"${loan_amount:,.0f} @ {interest_rate}% for {loan_term_years}yr",
+        # Principal & Interest (calculated from loan terms) - camelCase for frontend
+        "principalInterest": round(monthly_pi, 2),
+        "principalInterestCalc": f"${loan_amount:,.0f} @ {interest_rate}% for {loan_term_years}yr",
 
         # Taxes
         "taxes": round(monthly_taxes, 2),
-        "taxes_calc": f"${annual_taxes:,.0f}/yr ÷ 12",
-        "annual_taxes": round(annual_taxes, 2),
+        "taxesCalc": f"${annual_taxes:,.0f}/yr ÷ 12",
+        "annualTaxes": round(annual_taxes, 2),
 
         # Insurance (estimated)
         "insurance": round(monthly_insurance, 2),
-        "insurance_calc": f"0.35% × ${property_value:,.0f} ÷ 12",
-        "annual_insurance": round(annual_insurance, 2),
+        "insuranceCalc": f"0.35% × ${property_value:,.0f} ÷ 12",
+        "annualInsurance": round(annual_insurance, 2),
 
         # Total
         "total": round(monthly_pitia, 2),
 
         # Loan assumptions
-        "loan_amount": loan_amount,
-        "interest_rate": interest_rate,
-        "loan_term_years": loan_term_years,
-        "property_value": property_value,
+        "loanAmount": loan_amount,
+        "interestRate": interest_rate,
+        "loanTermYears": loan_term_years,
+        "propertyValue": property_value,
 
         # Source attribution
         "sources": {
             "taxes": "DataTree PropertyDetailReport",
             "insurance": "Estimated (0.35% of property value)",
-            "loan_terms": "Encompass" if enc else "Not available",
-            "property_value": "AVM" if processed.avm_value else "Assessed Value",
+            "loanTerms": loan_amount_source,
+            "propertyValue": "AVM" if processed.avm_value else "Assessed Value",
         },
     }
 
@@ -259,19 +272,23 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
     dt_report = await datatree_property.get_full_property_data(dt_address)
 
     # Use lien balance as loan amount (what they actually owe)
+    loan_amount_source = "Encompass"  # Default
     if dt_report and dt_report.existing_loans:
         total_lien_balance = sum(
             lien.get("originalAmount", 0) or 0
             for lien in dt_report.existing_loans
         )
         loan_amount_cents = int(total_lien_balance * 100)
+        loan_amount_source = "DataTree Liens"
         logger.info(f"Using DataTree lien balance as loan amount: ${total_lien_balance:,.0f}")
     elif dt_report and dt_report.total_loan_balance:
         loan_amount_cents = dt_report.total_loan_balance  # Already in cents
+        loan_amount_source = "DataTree"
         logger.info(f"Using DataTree total balance as loan amount: ${loan_amount_cents / 100:,.0f}")
     else:
         # Fall back to Encompass loan amount
         loan_amount_cents = int(enc["loan_amount"] * 100)
+        loan_amount_source = "Encompass"
         logger.info(f"No liens found, using Encompass loan amount: ${enc['loan_amount']:,.0f}")
 
     # Create a ParsedLead from Encompass data
@@ -322,7 +339,8 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Calculate simple DSCR using Encompass PITIA for comparison
-    rent_estimate = processed.rent_estimate or (processed.monthly_rent / 100 if processed.monthly_rent else 0)
+    # Use monthly_rent which may have been updated by Clear Capital
+    rent_estimate = (processed.monthly_rent / 100 if processed.monthly_rent else 0) or processed.rent_estimate or 0
     simple_dscr_enc_pitia = rent_estimate / enc["total_pitia"] if enc["total_pitia"] > 0 else 0
 
     # Calculate comparison metrics
@@ -332,7 +350,14 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
     # Extract pipeline data for comparison (with type conversions)
     prop = processed.property_data or {}
     pipeline_owner = prop.get("owner_names", [""])[0] if prop.get("owner_names") else ""
-    pipeline_avm = (processed.avm_value / 100) if processed.avm_value else ((prop.get("estimated_value") or 0) / 100)
+
+    # Use Clear Capital AVM if available (premium verification), otherwise use primary AVM
+    if processed.data_sources and processed.data_sources.premium_avm:
+        pipeline_avm = processed.data_sources.premium_avm.value / 100
+        avm_source = processed.data_sources.premium_avm.source
+    else:
+        pipeline_avm = (processed.avm_value / 100) if processed.avm_value else ((prop.get("estimated_value") or 0) / 100)
+        avm_source = processed.avm_source or "RentCast"
     pipeline_sqft = int(prop.get("square_feet") or 0) if prop.get("square_feet") else None
     pipeline_beds = int(prop.get("bedrooms") or 0) if prop.get("bedrooms") else None
     pipeline_baths = float(prop.get("bathrooms") or 0) if prop.get("bathrooms") else None
@@ -395,14 +420,30 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
         # Get existing analysis to preserve dscr fields (ratio, monthlyRent, etc.)
         existing_lead = await lead_repo.get_by_id(processed.lead_id)
         existing_analysis = existing_lead.get("analysis_data") if existing_lead else {}
-        # Parse JSON string if needed
-        if isinstance(existing_analysis, str):
-            existing_analysis = json_module.loads(existing_analysis) if existing_analysis else {}
-        existing_analysis = existing_analysis or {}
-        existing_dscr = existing_analysis.get("dscr", {}) if existing_analysis else {}
+
+        # Parse JSON string if needed (handle double-encoding)
+        while isinstance(existing_analysis, str):
+            try:
+                existing_analysis = json_module.loads(existing_analysis) if existing_analysis else {}
+            except (json_module.JSONDecodeError, TypeError):
+                existing_analysis = {}
+                break
+
+        # Ensure we have a dict
+        if not isinstance(existing_analysis, dict):
+            existing_analysis = {}
+
+        existing_dscr = existing_analysis.get("dscr", {})
+        # Handle case where dscr is a string
+        if isinstance(existing_dscr, str):
+            try:
+                existing_dscr = json_module.loads(existing_dscr)
+            except (json_module.JSONDecodeError, TypeError):
+                existing_dscr = {}
+        existing_dscr = existing_dscr if isinstance(existing_dscr, dict) else {}
 
         # Merge pitiBreakdown into existing dscr (preserves ratio, monthlyRent, etc.)
-        merged_dscr = {**existing_dscr, "pitiBreakdown": _calculate_piti_breakdown_dict(processed, prop, enc)}
+        merged_dscr = {**existing_dscr, "pitiBreakdown": _calculate_piti_breakdown_dict(processed, prop, enc, loan_amount_source, loan_amount_cents / 100)}
 
         validation_data = {
             "encompassValidation": {
@@ -440,6 +481,7 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
                 "avmComparison": {
                     "encompassValue": enc_avm,
                     "pipelineValue": pipeline_avm,
+                    "pipelineSource": avm_source,  # "ClearCapital:ClearAVM" or "RentCast"
                     "diff": round(avm_diff, 0),
                     "diffPct": round(avm_diff_pct, 1),
                     "match": avm_match,
@@ -450,6 +492,7 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
                     "encompassImpliedRent": round(implied_rent, 0),
                     "encompassGrossRent": enc.get("gross_rental_income"),
                     "pipelineRent": rent_estimate,
+                    "pipelineSource": processed.data_sources.rent_source if processed.data_sources else "RentCast",
                     "diff": round(rent_diff, 0),
                     "diffPct": round(rent_diff_pct, 1),
                     "match": rent_match,
@@ -538,16 +581,19 @@ async def run_pipeline_and_persist(enc: dict[str, Any]) -> dict[str, Any]:
         "rent_high": 0,
         "comp_count": len(processed.rental_comps) if processed.rental_comps else 0,
 
-        # DSCR calculations - use simple DSCR with Encompass PITIA as primary (matches Encompass)
+        # Comparables from Clear Capital
+        "sales_comps": processed.sales_comps,
+        "rental_comps": processed.rental_comps,
+
+        # DSCR calculations - use simple DSCR (Rent/PITIA) everywhere (matches Encompass)
         "calculated_dscr": round(simple_dscr_enc_pitia, 4),  # Simple DSCR using Encompass PITIA
-        "noi_dscr": processed.dscr_ratio,  # NOI method for reference
         "simple_dscr_pipeline_pitia": round(processed.simple_dscr_ratio or 0, 4),  # Simple DSCR using pipeline PITIA
         "pitia_monthly": (processed.monthly_pitia / 100) if processed.monthly_pitia else 0,
         "simple_dscr_enc_pitia": simple_dscr_enc_pitia,
 
         # PITI breakdown (from pipeline calculation)
         # PITI breakdown with industry-standard insurance estimate (0.35% of property value)
-        "piti_breakdown": _calculate_piti_breakdown_dict(processed, prop, enc),
+        "piti_breakdown": _calculate_piti_breakdown_dict(processed, prop, enc, loan_amount_source, loan_amount_cents / 100),
 
         # AVM
         "avm_value": (processed.avm_value / 100) if processed.avm_value else None,
@@ -751,11 +797,6 @@ async def validate_loan_html(loan_guid: str) -> str:
                 <td><strong>Simple (Encompass style)</strong></td>
                 <td>Rent / PITIA = ${pipe["rent_estimate"]:,.0f} / ${enc["total_pitia"]:,.0f}</td>
                 <td class="number"><strong>{pipe["simple_dscr_enc_pitia"]:.3f}</strong></td>
-            </tr>
-            <tr>
-                <td>NOI Method (conservative)</td>
-                <td>NOI / PITIA (5% vacancy, 8% mgmt)</td>
-                <td class="number">{pipe["calculated_dscr"]:.3f}</td>
             </tr>
         </table>
     </div>

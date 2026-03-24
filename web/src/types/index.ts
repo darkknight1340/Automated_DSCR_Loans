@@ -447,6 +447,7 @@ export interface EncompassValidation {
   avmComparison?: {
     encompassValue: number;
     pipelineValue: number;
+    pipelineSource?: string;  // "ClearCapital:ClearAVM" or "RentCast"
     diff: number;
     diffPct: number;
     match: boolean;
@@ -456,6 +457,7 @@ export interface EncompassValidation {
     encompassImpliedRent: number;
     encompassGrossRent: number | null;
     pipelineRent: number;
+    pipelineSource?: string;  // "RentCast" or "ClearCapital:RentalAVM"
     diff: number;
     diffPct: number;
     match: boolean;

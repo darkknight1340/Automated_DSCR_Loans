@@ -1011,13 +1011,15 @@ class DataTreePropertyService:
                 combined_ltv = open_liens.get("CombinedLoanToValuePercentage")
 
                 liens = []
+                sum_of_balances = 0
                 for tx in transactions:
                     if tx.get("Type") == 1:  # FINANCE type
+                        loan_amount = tx.get("LoanAmount") or 0
                         lien = {
                             "position": tx.get("LienPosition"),
                             "lenderName": tx.get("Lender") or tx.get("SellerLender"),
-                            "originalAmount": tx.get("LoanAmount"),
-                            "estimatedBalance": tx.get("LoanAmount"),  # Use original as estimate
+                            "originalAmount": loan_amount,
+                            "estimatedBalance": loan_amount,  # Use original as estimate
                             "loanType": tx.get("MortgageLoanType"),
                             "interestRate": float(tx.get("MortgageRate", 0)) if tx.get("MortgageRate") else None,
                             "recordingDate": tx.get("TxDate"),
@@ -1025,15 +1027,18 @@ class DataTreePropertyService:
                             "source": "DataTree",
                         }
                         liens.append(lien)
+                        sum_of_balances += loan_amount
 
                 result.existing_loans = liens
-                result.total_loan_balance = int(combined_balance * 100)  # Convert to cents
+                # Use CombinedEstimatedLoanBalance if available, otherwise sum individual liens
+                final_balance = combined_balance if combined_balance > 0 else sum_of_balances
+                result.total_loan_balance = int(final_balance * 100)  # Convert to cents
                 result.mortgage_count = len(liens)
                 result.ltv_ratio = combined_ltv
 
                 logger.info("Full property data: %s beds, %s baths, %s sqft, %d liens, balance=$%s",
                            result.bedrooms, result.bathrooms, result.square_feet,
-                           result.mortgage_count, f"{combined_balance:,.0f}")
+                           result.mortgage_count, f"{final_balance:,.0f}")
             else:
                 logger.info("Full property data: %s beds, %s baths, %s sqft (no lien data)",
                            result.bedrooms, result.bathrooms, result.square_feet)

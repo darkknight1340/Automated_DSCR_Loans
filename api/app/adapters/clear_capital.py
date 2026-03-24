@@ -12,6 +12,7 @@ API Spec: https://api.integ.clearcapital.com/api/property-analytics-api
 """
 
 import os
+import re
 from dataclasses import dataclass, field
 
 import httpx
@@ -27,6 +28,13 @@ if not logger.handlers:
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(logging.Formatter('%(message)s'))
     logger.addHandler(handler)
+
+
+class _PropertyNotFoundError(Exception):
+    """Internal exception for 404 responses to enable duplex retry logic."""
+    def __init__(self, address: str):
+        self.address = address
+        super().__init__(f"Property not found: {address}")
 
 
 @dataclass
@@ -102,6 +110,33 @@ class ClearCapitalService:
     def is_configured(self) -> bool:
         """Check if Clear Capital credentials are configured."""
         return self.config is not None
+
+    def _parse_duplex_address(self, street: str) -> tuple[str | None, str]:
+        """
+        Parse duplex/multi-unit addresses like "225 227 Nw 2nd Ave".
+
+        Returns:
+            Tuple of (first_address_only, original_street)
+            - first_address_only: e.g., "225 Nw 2nd Ave" if duplex detected, None otherwise
+            - original_street: the original input
+        """
+        # Pattern: two numbers at start separated by space, hyphen, or slash
+        # Examples: "225 227 Nw 2nd Ave", "225-227 Nw 2nd Ave", "225/227 Nw 2nd Ave"
+        duplex_pattern = r'^(\d+)\s*[-/\s]\s*(\d+)\s+(.+)$'
+        match = re.match(duplex_pattern, street.strip())
+
+        if match:
+            first_num = match.group(1)
+            second_num = match.group(2)
+            rest_of_address = match.group(3)
+
+            # Validate both are reasonable street numbers (not years like 2024)
+            if len(first_num) <= 5 and len(second_num) <= 5:
+                first_address = f"{first_num} {rest_of_address}"
+                logger.debug(f"[CLEAR_CAPITAL] Detected duplex address: '{street}' -> trying '{first_address}'")
+                return first_address, street
+
+        return None, street
 
     async def get_property_analytics(
         self,
@@ -211,7 +246,8 @@ class ClearCapitalService:
                     return None
                 if resp.status_code == 404:
                     logger.warning(f"[CLEAR_CAPITAL] ✗ Property not found - {street}, {city}, {state}")
-                    return None
+                    # Don't return None yet - we'll check for duplex retry after the try block
+                    raise _PropertyNotFoundError(street)
                 if resp.status_code == 429:
                     retry_after = resp.headers.get("Retry-After", "unknown")
                     logger.warning(f"[CLEAR_CAPITAL] ✗ Rate limited, retry after {retry_after}s")
@@ -230,12 +266,31 @@ class ClearCapitalService:
             if "rentalComparables" in data:
                 comps = data.get("rentalComparables", {}).get("result", {}).get("comparables", [])
                 logger.debug(f"[CLEAR_CAPITAL] RentalComps: {len(comps)} comparables")
-            # Log the actual rent values from comps
-            for i, comp in enumerate(comps):
-                rent = comp.get("statusPrice") or comp.get("rent", 0)
-                logger.debug(f"[CLEAR_CAPITAL]   Comp {i+1}: ${rent}/mo")
+                # Log the actual rent values from comps
+                for i, comp in enumerate(comps):
+                    rent = comp.get("statusPrice") or comp.get("rent", 0)
+                    logger.debug(f"[CLEAR_CAPITAL]   Comp {i+1}: ${rent}/mo")
             return self._parse_order_response(data)
 
+        except _PropertyNotFoundError:
+            # Try duplex fallback - use first address number only
+            first_address, original = self._parse_duplex_address(street)
+            if first_address and first_address != street:
+                logger.info(f"[CLEAR_CAPITAL] Retrying duplex with first address: {first_address}")
+                # Recursive call with first address only (won't retry again since it won't match pattern)
+                return await self.get_property_analytics(
+                    street=first_address,
+                    city=city,
+                    state=state,
+                    zip_code=zip_code,
+                    include_avm=include_avm,
+                    include_rental_avm=include_rental_avm,
+                    include_rental_comps=include_rental_comps,
+                    include_sales_comps=include_sales_comps,
+                    include_tax_history=include_tax_history,
+                    max_comps=max_comps,
+                )
+            return None
         except httpx.TimeoutException:
             logger.error(f"Clear Capital: Request timeout for {street}, {city}, {state}")
             return None
@@ -378,21 +433,52 @@ class ClearCapitalService:
         comps = []
 
         for comp in comps_data.get("comparables", []):
-            # Get address components
-            address = comp.get("propertyCompleteAddress") or comp.get("streetAddress", "")
+            # Address can be a nested object {street, city, state, zipcode} or a string
+            address_data = comp.get("address")
+            if isinstance(address_data, dict):
+                # Nested address object - extract street address
+                address = address_data.get("street", "")
+                city = address_data.get("city")
+                state = address_data.get("state")
+                zipcode = address_data.get("zipcode") or address_data.get("zip")
+            else:
+                # Flat address - try multiple field names
+                address = comp.get("propertyCompleteAddress") or comp.get("streetAddress") or address_data or ""
+                city = comp.get("city")
+                state = comp.get("state")
+                zipcode = comp.get("zipcode")
 
             # Get rent from statusPrice (for leases)
             rent = comp.get("statusPrice", 0)
 
+            # Sanity check: filter out unreasonable rent values (likely sale prices)
+            # Monthly rent should be under $50,000 for residential properties
+            if rent > 50000:
+                logger.warning(
+                    f"[CLEAR_CAPITAL] Skipping rental comp with unreasonable rent: ${rent:,}/mo at {address}"
+                )
+                continue
+
+            # Handle bathroom fields
+            bath_str = comp.get("bath") or comp.get("bathFull")
+            bathrooms = None
+            if bath_str:
+                try:
+                    bathrooms = float(bath_str)
+                except (ValueError, TypeError):
+                    pass
+            if bathrooms is None:
+                bathrooms = comp.get("totalBathCount") or comp.get("bathrooms")
+
             comps.append(RentalComp(
                 address=address,
-                city=comp.get("city"),
-                state=comp.get("state"),
-                zipcode=comp.get("zipcode"),
+                city=city,
+                state=state,
+                zipcode=zipcode,
                 rent=rent,
-                bedrooms=comp.get("bedCount"),
-                bathrooms=comp.get("totalBathCount"),
-                sqft=comp.get("grossLivingArea"),
+                bedrooms=comp.get("bed") or comp.get("bedCount"),
+                bathrooms=bathrooms,
+                sqft=comp.get("gla") or comp.get("grossLivingArea"),
                 distance=comp.get("distanceToSubject"),
                 status=comp.get("status"),
                 days_on_market=comp.get("daysOnMarket"),
@@ -404,21 +490,57 @@ class ClearCapitalService:
         """Parse sales comparables from the API response."""
         comps = []
 
-        for comp in comps_data.get("comparables", []):
-            address = comp.get("propertyCompleteAddress") or comp.get("streetAddress", "")
-            sale_price = comp.get("statusPrice") or comp.get("salePrice", 0)
+        for i, comp in enumerate(comps_data.get("comparables", [])):
+            # Log first comp's keys to debug field names
+            if i == 0:
+                logger.debug(f"[CLEAR_CAPITAL] Sales comp keys: {list(comp.keys())}")
+
+            # Address can be a nested object {street, city, state, zipcode} or a string
+            address_data = comp.get("address")
+            if isinstance(address_data, dict):
+                # Nested address object - extract street address
+                address = address_data.get("street", "")
+                city = address_data.get("city")
+                state = address_data.get("state")
+                zipcode = address_data.get("zipcode") or address_data.get("zip")
+            else:
+                # Flat address - try multiple field names
+                address = (
+                    comp.get("propertyCompleteAddress") or
+                    comp.get("streetAddress") or
+                    address_data or  # string address
+                    comp.get("fullAddress") or
+                    comp.get("propertyAddress") or
+                    ""
+                )
+                city = comp.get("city")
+                state = comp.get("state")
+                zipcode = comp.get("zipcode") or comp.get("zip")
+
+            sale_price = comp.get("statusPrice") or comp.get("salePrice") or comp.get("price", 0)
+
+            # Handle bathroom fields - could be 'bath', 'bathFull', 'totalBathCount'
+            bath_str = comp.get("bath") or comp.get("bathFull")
+            bathrooms = None
+            if bath_str:
+                try:
+                    bathrooms = float(bath_str)
+                except (ValueError, TypeError):
+                    pass
+            if bathrooms is None:
+                bathrooms = comp.get("totalBathCount") or comp.get("bathrooms")
 
             comps.append(SalesComp(
                 address=address,
-                city=comp.get("city"),
-                state=comp.get("state"),
-                zipcode=comp.get("zipcode"),
+                city=city,
+                state=state,
+                zipcode=zipcode,
                 sale_price=sale_price,
                 sale_date=comp.get("statusDate") or comp.get("saleDate"),
-                bedrooms=comp.get("bedCount"),
-                bathrooms=comp.get("totalBathCount"),
-                sqft=comp.get("grossLivingArea"),
-                distance=comp.get("distanceToSubject"),
+                bedrooms=comp.get("bed") or comp.get("bedCount") or comp.get("bedrooms"),
+                bathrooms=bathrooms,
+                sqft=comp.get("gla") or comp.get("grossLivingArea") or comp.get("sqft") or comp.get("livingArea"),
+                distance=comp.get("distanceToSubject") or comp.get("distance"),
             ))
 
         return comps

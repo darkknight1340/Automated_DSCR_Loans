@@ -107,6 +107,9 @@ class ProcessedLead:
     rent_estimate: int | None = None  # dollars/month
     rental_comps: list[dict[str, Any]] | None = None
 
+    # Sales comps (from Clear Capital)
+    sales_comps: list[dict[str, Any]] | None = None
+
     # Offer
     offer_id: str | None = None
     offer_token: str | None = None
@@ -671,7 +674,6 @@ class IngestService:
                 override_value_cents=property_value if property_value else None,
             )
             if dscr_result:
-                processed.dscr_ratio = dscr_result["dscr"]  # NOI method
                 processed.monthly_rent = dscr_result["monthly_rent"]
                 processed.monthly_pitia = dscr_result["monthly_pitia"]
 
@@ -680,15 +682,16 @@ class IngestService:
                     processed.simple_dscr_ratio = round(
                         processed.monthly_rent / processed.monthly_pitia, 4
                     )
-                    # Use simple DSCR for approval decision (matches Encompass)
-                    processed.dscr_meets_minimum = processed.simple_dscr_ratio >= self.config.min_dscr
                 else:
-                    processed.simple_dscr_ratio = processed.dscr_ratio
-                    processed.dscr_meets_minimum = dscr_result["meets_minimum"]
+                    processed.simple_dscr_ratio = 0.0
+
+                # Use simple DSCR for all decisions (matches Encompass)
+                processed.dscr_ratio = processed.simple_dscr_ratio  # Keep for backward compatibility
+                processed.dscr_meets_minimum = processed.simple_dscr_ratio >= self.config.min_dscr
 
                 processed.status = LeadProcessingStatus.DSCR_CALCULATED
                 logger.info(
-                    f"[STEP 7] ✓ DSCR Result: NOI={processed.dscr_ratio:.4f}, Simple={processed.simple_dscr_ratio:.4f}"
+                    f"[STEP 7] ✓ DSCR: {processed.simple_dscr_ratio:.4f}"
                 )
                 logger.info(
                     f"[STEP 7]   Monthly Rent: ${processed.monthly_rent:,} | Monthly PITIA: ${processed.monthly_pitia:,}"
@@ -820,6 +823,49 @@ class IngestService:
                                 f"[STEP 7b] ✓ DSCR recalculated: {old_dscr:.4f} → {processed.simple_dscr_ratio:.4f} "
                                 f"(rent: ${final_rent:,}/mo)"
                             )
+
+                    # Store Clear Capital sales comps
+                    if premium_data.sales_comps:
+                        processed.sales_comps = [
+                            {
+                                "address": comp.address,
+                                "city": comp.city,
+                                "state": comp.state,
+                                "zip": comp.zipcode,
+                                "salePrice": comp.sale_price,
+                                "saleDate": comp.sale_date,
+                                "bedrooms": comp.bedrooms,
+                                "bathrooms": comp.bathrooms,
+                                "squareFeet": comp.sqft,
+                                "distance": comp.distance,
+                            }
+                            for comp in premium_data.sales_comps
+                        ]
+                        logger.info(f"[STEP 7b] ✓ Stored {len(processed.sales_comps)} sales comps from Clear Capital")
+
+                    # Store Clear Capital rental comps (prefer premium data over RentCast)
+                    if premium_data.rental_comps:
+                        cc_rental_comps = [
+                            {
+                                "address": comp.address,
+                                "city": comp.city,
+                                "state": comp.state,
+                                "zip": comp.zipcode,
+                                "rent": comp.rent,
+                                "bedrooms": comp.bedrooms,
+                                "bathrooms": comp.bathrooms,
+                                "squareFeet": comp.sqft,
+                                "distance": comp.distance,
+                                "source": "ClearCapital",
+                            }
+                            for comp in premium_data.rental_comps
+                            if comp.rent > 0  # Only include comps with valid rent
+                        ]
+                        if cc_rental_comps:
+                            processed.rental_comps = cc_rental_comps
+                            logger.info(f"[STEP 7b] ✓ Stored {len(processed.rental_comps)} rental comps from Clear Capital")
+                        else:
+                            logger.info(f"[STEP 7b] Clear Capital rental comps filtered out, keeping RentCast comps")
                 else:
                     logger.info(f"[STEP 7b] Clear Capital not called (conditions not met or not configured)")
 
@@ -876,7 +922,7 @@ class IngestService:
                 )
             else:
                 # Step 10: Run decision engine (rules + pricing)
-                if processed.dscr_ratio is not None:
+                if processed.simple_dscr_ratio is not None:
                     property_type = processed.property_data.get("property_type", "SFR") if processed.property_data else "SFR"
 
                     # Check if owner mailing address matches property address
@@ -887,7 +933,7 @@ class IngestService:
 
                     loan_data = LoanData(
                         application_id=app_db_id,
-                        dscr=processed.dscr_ratio,
+                        dscr=processed.simple_dscr_ratio,  # Use simple DSCR (Rent/PITIA)
                         ltv=min(ltv, 100.0),
                         cltv=min(ltv, 100.0),
                         credit_score=self.config.default_credit_score,
@@ -961,8 +1007,7 @@ class IngestService:
 
             # DSCR/LTV
             logger.info(f"[SUMMARY] Metrics:")
-            logger.info(f"[SUMMARY]   DSCR (Simple): {processed.simple_dscr_ratio or 0:.4f}")
-            logger.info(f"[SUMMARY]   DSCR (NOI): {processed.dscr_ratio or 0:.4f}")
+            logger.info(f"[SUMMARY]   DSCR: {processed.simple_dscr_ratio or 0:.4f}")
             logger.info(f"[SUMMARY]   LTV: {ltv:.1f}%")
             logger.info(f"[SUMMARY]   Loan Amount: ${loan_amount_cents / 100:,.0f}")
 
@@ -2074,6 +2119,7 @@ class IngestService:
                 },
                 "rentEstimate": processed.rent_estimate,
                 "rentalComps": processed.rental_comps,
+                "salesComps": processed.sales_comps,
                 "loanAmount": loan_amount_cents / 100,
                 "loanPurpose": loan_purpose,
                 "dataSources": processed.data_sources.to_dict() if processed.data_sources else {},
