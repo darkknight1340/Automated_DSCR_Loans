@@ -642,13 +642,20 @@ class IngestService:
                 logger.info(f"[STEP 5b] Skipping verification - missing AVM or rent data")
 
             # Step 6: Determine loan amount
-            # - If explicitly provided (e.g., from Encompass validation): use that
-            # - Otherwise: calculate max approvable under DSCR guidelines
+            # Priority: DataTree lien balance > Encompass loan amount > calculated max
             logger.info(f"[STEP 6] Determining loan amount")
-            if parsed_lead.loan_amount and parsed_lead.loan_amount > 0:
+            datatree_lien_balance = processed.property_data.get("total_loan_balance", 0) if processed.property_data else 0
+
+            if datatree_lien_balance and datatree_lien_balance > 0:
+                # Use DataTree lien balance (actual liens on property)
+                loan_amount_cents = int(datatree_lien_balance)
+                loan_purpose = "RATE_TERM_REFI"
+                logger.info(f"[STEP 6] Using DataTree lien balance: ${loan_amount_cents / 100:,.0f}")
+            elif parsed_lead.loan_amount and parsed_lead.loan_amount > 0:
+                # Fall back to Encompass loan amount if no liens found
                 loan_amount_cents = parsed_lead.loan_amount
                 loan_purpose = "RATE_TERM_REFI"
-                logger.info(f"[STEP 6] Using provided loan amount: ${loan_amount_cents / 100:,.0f}")
+                logger.info(f"[STEP 6] Using Encompass loan amount (no liens): ${loan_amount_cents / 100:,.0f}")
             else:
                 loan_amount_cents, loan_purpose = self._determine_loan_amount(
                     processed.property_data,
@@ -1791,12 +1798,15 @@ class IngestService:
 
         return {
             "principalInterest": round(monthly_pi, 2),
-            "principalInterestCalc": f"${loan_amount:,.0f} @ {rate}% for {loan_term_years}yr",
+            "principalInterestCalc": f"${loan_amount:,.0f} @ {rate}% (fixed) for {loan_term_years}yr",
             "taxes": round(monthly_taxes, 2),
             "taxesCalc": f"${annual_taxes:,.0f}/yr ÷ 12",
             "insurance": round(monthly_insurance, 2),
             "insuranceCalc": f"0.35% × ${property_value:,.0f} ÷ 12",
             "total": round(monthly_pitia, 2),
+            "loanAmount": loan_amount,
+            "interestRate": rate,
+            "loanSource": "DataTree Liens",
         }
 
     async def _fetch_rental_comps(

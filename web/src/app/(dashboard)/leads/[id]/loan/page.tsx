@@ -699,7 +699,9 @@ export default function LoanDetailPage() {
                   <p className="text-muted-foreground">Principal & Interest</p>
                   <p className="font-medium">
                     {fmt((a.dscr as any)?.pitiBreakdown?.principalInterest)}
-                    <span className="text-xs font-normal text-muted-foreground ml-1">(Calculated)</span>
+                    {(a.dscr as any)?.pitiBreakdown?.loanSource && (
+                      <span className="text-xs font-normal text-muted-foreground ml-1">({(a.dscr as any).pitiBreakdown.loanSource})</span>
+                    )}
                   </p>
                   {(a.dscr as any)?.pitiBreakdown?.principalInterestCalc && (
                     <p className="text-xs text-muted-foreground mt-1">{(a.dscr as any).pitiBreakdown.principalInterestCalc}</p>
