@@ -642,26 +642,24 @@ class IngestService:
                 logger.info(f"[STEP 5b] Skipping verification - missing AVM or rent data")
 
             # Step 6: Determine loan amount
-            # Priority: DataTree lien balance > Encompass loan amount > calculated max
+            # Priority: DataTree lien balance > calculated max (no Encompass)
             logger.info(f"[STEP 6] Determining loan amount")
             datatree_lien_balance = processed.property_data.get("total_loan_balance", 0) if processed.property_data else 0
+            loan_amount_source = "Calculated"
 
             if datatree_lien_balance and datatree_lien_balance > 0:
                 # Use DataTree lien balance (actual liens on property)
                 loan_amount_cents = int(datatree_lien_balance)
                 loan_purpose = "RATE_TERM_REFI"
+                loan_amount_source = "DataTree Liens"
                 logger.info(f"[STEP 6] Using DataTree lien balance: ${loan_amount_cents / 100:,.0f}")
-            elif parsed_lead.loan_amount and parsed_lead.loan_amount > 0:
-                # Fall back to Encompass loan amount if no liens found
-                loan_amount_cents = parsed_lead.loan_amount
-                loan_purpose = "RATE_TERM_REFI"
-                logger.info(f"[STEP 6] Using Encompass loan amount (no liens): ${loan_amount_cents / 100:,.0f}")
             else:
                 loan_amount_cents, loan_purpose = self._determine_loan_amount(
                     processed.property_data,
                     rent_estimate=rent_estimate,
                     avm_value=property_value,
                 )
+                loan_amount_source = "Calculated (Max Approvable)"
                 logger.info(f"[STEP 6] Calculated loan amount: ${loan_amount_cents / 100:,.0f} ({loan_purpose})")
 
             # Step 7: Calculate DSCR with the determined loan amount
@@ -873,7 +871,8 @@ class IngestService:
                 # Store analysis data even for rejections
                 await self._persist_analysis(
                     lead_db_id, processed, loan_amount_cents, loan_purpose,
-                    address, rejection_reasons=rejection_reasons,
+                    address, loan_amount_source=loan_amount_source,
+                    rejection_reasons=rejection_reasons,
                 )
             else:
                 # Step 10: Run decision engine (rules + pricing)
@@ -924,7 +923,8 @@ class IngestService:
                 # Store analysis data for all processed leads
                 await self._persist_analysis(
                     lead_db_id, processed, loan_amount_cents, loan_purpose,
-                    address, decision_result=decision_result,
+                    address, loan_amount_source=loan_amount_source,
+                    decision_result=decision_result,
                 )
 
             # Step 12: Run Encompass validation if GUID is available
@@ -1737,6 +1737,7 @@ class IngestService:
         processed: ProcessedLead,
         loan_amount_cents: int = 0,
         interest_rate: float | None = None,
+        loan_amount_source: str = "Unknown",
     ) -> dict[str, Any]:
         """Calculate PITI breakdown using forward loan calculation.
 
@@ -1806,7 +1807,7 @@ class IngestService:
             "total": round(monthly_pitia, 2),
             "loanAmount": loan_amount,
             "interestRate": rate,
-            "loanSource": "DataTree Liens",
+            "loanSource": loan_amount_source,
         }
 
     async def _fetch_rental_comps(
@@ -2016,6 +2017,7 @@ class IngestService:
         loan_purpose: str,
         address: PropertyReachAddress,
         *,
+        loan_amount_source: str = "Unknown",
         decision_result: Any = None,
         rejection_reasons: list[str] | None = None,
     ) -> None:
@@ -2050,7 +2052,7 @@ class IngestService:
                     "meetsMinimum": processed.dscr_meets_minimum,
                     "monthlyRent": (processed.monthly_rent or 0) / 100,
                     "monthlyPITIA": (processed.monthly_pitia or 0) / 100,
-                    "pitiBreakdown": self._calculate_piti_breakdown(processed, loan_amount_cents),
+                    "pitiBreakdown": self._calculate_piti_breakdown(processed, loan_amount_cents, loan_amount_source=loan_amount_source),
                 },
                 "avm": {
                     "value": (processed.avm_value or 0) / 100,
