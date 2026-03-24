@@ -95,6 +95,7 @@ async def lookup_property(request: PropertyLookupRequest) -> PropertyDataRespons
         )
 
     # Fall back to DataTree
+    # Note: DataTree requires specific products enabled on the account
     dt_address = Address(
         street=request.street,
         city=request.city,
@@ -102,15 +103,48 @@ async def lookup_property(request: PropertyLookupRequest) -> PropertyDataRespons
         zip_code=request.zip_code,
         unit=request.unit,
     )
-    dt_data = await datatree_property.get_property_data(dt_address)
+    dt_report = await datatree_property.get_property_report(dt_address)
 
-    if dt_data:
+    if dt_report:
         return PropertyDataResponse(
-            address=dt_data.address,
-            characteristics=dt_data.characteristics,
-            assessment=dt_data.assessment,
-            ownership=dt_data.ownership,
-            mortgages=dt_data.mortgages,
+            address={
+                "street": request.street,
+                "city": request.city,
+                "state": request.state,
+                "zip_code": request.zip_code,
+            },
+            characteristics={
+                "property_type": dt_report.property_type,
+                "year_built": dt_report.year_built,
+                "square_feet": dt_report.square_feet,
+                "bedrooms": dt_report.bedrooms,
+                "bathrooms": dt_report.bathrooms,
+                "units": dt_report.units,
+                "stories": dt_report.stories,
+                "lot_size_sqft": dt_report.lot_size_sqft,
+                "pool": dt_report.pool,
+                "garage_spaces": dt_report.garage_spaces,
+            },
+            assessment={
+                "assessed_value": dt_report.assessed_value,
+                "annual_taxes": dt_report.annual_taxes,
+                "tax_year": dt_report.tax_year,
+                "land_value": dt_report.land_value,
+                "improvement_value": dt_report.improvement_value,
+            },
+            ownership={
+                "names": dt_report.owner_names,
+                "owner_occupied": dt_report.owner_occupied,
+                "ownership_type": dt_report.ownership_type,
+                "mailing_address": dt_report.mailing_address,
+            },
+            mortgages=dt_report.existing_loans,
+            equity={
+                "estimated_value": dt_report.estimated_value,
+                "total_mortgage_balance": dt_report.total_loan_balance,
+                "estimated_equity": dt_report.estimated_equity,
+                "ltv_ratio": dt_report.ltv_ratio,
+            },
             source="DataTree",
         )
 

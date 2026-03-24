@@ -126,48 +126,38 @@ async def verify_offer(request: VerifyOfferRequest) -> VerifyOfferResponse:
         )
 
 
+def _parse_jsonb(val: str | dict | None) -> dict:
+    """Parse JSONB field that might be a string or already parsed."""
+    if val is None:
+        return {}
+    if isinstance(val, dict):
+        return val
+    try:
+        import json
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 @router.get("/{token}")
 async def get_offer(token: str) -> dict:
-    """
-    Get offer details by token.
+    """Get offer details by token from database."""
+    try:
+        from app.db.repositories import offer_repo
+        offer = await offer_repo.get_by_token(token)
+        if offer:
+            return {
+                "token": offer["token"],
+                "borrower": _parse_jsonb(offer["borrower_data"]),
+                "property": _parse_jsonb(offer["property_data"]),
+                "dscr": _parse_jsonb(offer["dscr_data"]),
+                "loan": _parse_jsonb(offer["loan_data"]),
+                "decision": _parse_jsonb(offer.get("decision_data")),
+                "status": offer["status"],
+                "createdAt": offer["created_at"].isoformat() if offer.get("created_at") else None,
+                "expiresAt": offer["expires_at"].isoformat() if offer.get("expires_at") else None,
+            }
+    except RuntimeError:
+        pass
 
-    In production, this would look up the offer from the database.
-    For now, returns mock data for demo purposes.
-    """
-    # Mock offer data - in production this would come from DB
-    return {
-        "token": token,
-        "borrower": {
-            "first_name": "John",
-            "last_name": "Smith",
-            "email": "john.smith@example.com",
-            "phone": "(555) 123-4567",
-        },
-        "property": {
-            "address": "123 Investment Property Lane",
-            "city": "Austin",
-            "state": "TX",
-            "zip_code": "78701",
-            "property_type": "Single Family Residence",
-            "units": 1,
-            "year_built": 2018,
-            "square_feet": 2200,
-        },
-        "dscr": {
-            "monthly_rent": 350000,  # $3,500
-            "property_taxes": 720000,  # $7,200/year
-            "insurance": 180000,  # $1,800/year
-            "hoa_fees": 0,
-            "vacancy_rate": 0.05,
-            "dscr": 1.25,
-        },
-        "loan": {
-            "loan_amount": 45000000,  # $450,000
-            "interest_rate": 7.25,
-            "loan_term": 360,
-            "loan_type": "DSCR 30-Year Fixed",
-            "estimated_payment": 306900,  # $3,069
-        },
-        "status": "pending_verification",
-        "expires_at": datetime.now(timezone.utc).isoformat(),
-    }
+    raise HTTPException(status_code=404, detail="Offer not found")

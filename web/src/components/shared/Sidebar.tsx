@@ -10,6 +10,8 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  Search,
+  CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -42,6 +44,16 @@ const navItems: NavItem[] = [
     title: 'Leads',
     href: '/leads',
     icon: Users,
+  },
+  {
+    title: 'Process',
+    href: '/process',
+    icon: Search,
+  },
+  {
+    title: 'Validation',
+    href: '/validation',
+    icon: CheckCircle,
   },
 ];
 

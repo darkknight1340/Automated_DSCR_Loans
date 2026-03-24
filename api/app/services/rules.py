@@ -85,6 +85,7 @@ class LoanData:
     prior_bankruptcies: int = 0
     prior_foreclosures: int = 0
     current_delinquencies: int = 0
+    owner_address_matches_property: bool = False  # True if mailing address = property address
 
 
 class RulesEngine:
@@ -221,17 +222,17 @@ class RulesEngine:
                 "id": "CREDIT-003",
                 "name": "Recent Bankruptcy",
                 "category": RuleCategory.CREDIT,
-                "severity": RuleSeverity.HARD_STOP,
+                "severity": RuleSeverity.WARNING,
                 "check": lambda d: d.prior_bankruptcies == 0,
-                "message": lambda d, p: "No bankruptcy seasoning issues" if p else f"Borrower has {d.prior_bankruptcies} prior bankruptcy(ies)",
+                "message": lambda d, p: "No bankruptcy history" if p else f"Borrower has {d.prior_bankruptcies} prior bankruptcy(ies) - review seasoning",
             },
             {
                 "id": "CREDIT-004",
                 "name": "Recent Foreclosure",
                 "category": RuleCategory.CREDIT,
-                "severity": RuleSeverity.HARD_STOP,
+                "severity": RuleSeverity.WARNING,
                 "check": lambda d: d.prior_foreclosures == 0,
-                "message": lambda d, p: "No foreclosure seasoning issues" if p else f"Borrower has {d.prior_foreclosures} prior foreclosure(s)",
+                "message": lambda d, p: "No foreclosure history" if p else f"Borrower has {d.prior_foreclosures} prior foreclosure(s) - review seasoning",
             },
 
             # Property Rules
@@ -239,17 +240,25 @@ class RulesEngine:
                 "id": "PROP-001",
                 "name": "Eligible Property Type",
                 "category": RuleCategory.PROPERTY,
-                "severity": RuleSeverity.HARD_STOP,
-                "check": lambda d: d.property_type in ["SFR", "CONDO", "TOWNHOUSE", "DUPLEX", "TRIPLEX", "FOURPLEX", "MULTIFAMILY_5PLUS"],
-                "message": lambda d, p: f"Property type {d.property_type} {'is' if p else 'is not'} eligible",
+                "severity": RuleSeverity.WARNING,
+                "check": lambda d: d.property_type in ["SFR", "CONDO", "TOWNHOUSE", "DUPLEX", "TRIPLEX", "FOURPLEX", "MULTIFAMILY_5PLUS", "2_4_UNIT", "MULTI_FAMILY"],
+                "message": lambda d, p: f"Property type {d.property_type} {'is' if p else 'is not'} in standard eligible list - review required",
             },
             {
                 "id": "PROP-002",
                 "name": "Rural Property",
                 "category": RuleCategory.PROPERTY,
-                "severity": RuleSeverity.EXCEPTION_REQUIRED,
+                "severity": RuleSeverity.WARNING,
                 "check": lambda d: not d.is_rural,
-                "message": lambda d, p: "Property is not in a rural area" if p else "Property is in a rural area - exception required",
+                "message": lambda d, p: "Property is not in a rural area" if p else "Property is in a rural area - review required",
+            },
+            {
+                "id": "PROP-003",
+                "name": "Owner-Occupied Check",
+                "category": RuleCategory.PROPERTY,
+                "severity": RuleSeverity.WARNING,
+                "check": lambda d: not d.owner_address_matches_property,
+                "message": lambda d, p: "Owner mailing address differs from property" if p else "Owner mailing address matches property - may be owner-occupied, verify investment use",
             },
 
             # Loan Amount Rules
@@ -270,15 +279,8 @@ class RulesEngine:
                 "message": lambda d, p: f"Loan amount ${d.loan_amount / 100:,.0f} {'is within' if p else 'exceeds'} maximum $3,000,000",
             },
 
-            # Reserve Rules
-            {
-                "id": "RESERVE-001",
-                "name": "Minimum Reserves",
-                "category": RuleCategory.ELIGIBILITY,
-                "severity": RuleSeverity.EXCEPTION_REQUIRED,
-                "check": lambda d: d.months_reserves >= 6,
-                "message": lambda d, p: f"{d.months_reserves} months reserves {'meets' if p else 'does not meet'} 6 month minimum",
-            },
+            # Reserve Rules - removed (requires manual verification of borrower assets)
+            # TODO: Add back when borrower financial data is available
         ]
 
 

@@ -1,5 +1,7 @@
 import type {
   Lead,
+  LeadDetail,
+  LeadStats,
   Application,
   Task,
   FunnelMetrics,
@@ -67,7 +69,7 @@ class ApiClient {
   }): Promise<PaginatedResponse<Lead>> {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+    if (params?.pageSize) searchParams.set('page_size', params.pageSize.toString());
     if (params?.status) searchParams.set('status', params.status);
     if (params?.assignedLOId) searchParams.set('assignedLOId', params.assignedLOId);
     if (params?.search) searchParams.set('search', params.search);
@@ -91,6 +93,14 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ status }),
     });
+  }
+
+  async getLeadDetail(id: string): Promise<LeadDetail> {
+    return this.request<LeadDetail>(`/leads/${id}/detail`);
+  }
+
+  async getLeadStats(): Promise<LeadStats> {
+    return this.request<LeadStats>('/leads/stats');
   }
 
   // -------------------------------------------------------------------------

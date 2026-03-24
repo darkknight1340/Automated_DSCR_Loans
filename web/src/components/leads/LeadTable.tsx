@@ -38,7 +38,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { LeadScoreIndicator } from './LeadScoreIndicator';
 import { ArrowUpDown, MoreHorizontal, Phone, Mail, Eye } from 'lucide-react';
 import type { Lead, LeadStatus } from '@/types';
 import { format } from 'date-fns';
@@ -62,12 +61,14 @@ export function LeadTable({ leads, onStatusChange }: LeadTableProps) {
     }).format(cents / 100);
   };
 
+  const decisionBadgeVariant = (result?: string) => {
+    if (!result) return 'secondary' as const;
+    if (result === 'APPROVED') return 'default' as const;
+    if (result === 'DENIED') return 'destructive' as const;
+    return 'outline' as const;
+  };
+
   const columns: ColumnDef<Lead>[] = [
-    {
-      accessorKey: 'score',
-      header: 'Score',
-      cell: ({ row }) => <LeadScoreIndicator score={row.original.score} />,
-    },
     {
       accessorKey: 'name',
       header: ({ column }) => (
@@ -91,21 +92,23 @@ export function LeadTable({ leads, onStatusChange }: LeadTableProps) {
       accessorFn: (row) => `${row.firstName} ${row.lastName}`,
     },
     {
+      accessorKey: 'propertyAddress',
+      header: 'Property',
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.propertyAddress
+            ? `${row.original.propertyAddress}, ${row.original.propertyState ?? ''}`
+            : '-'}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
       filterFn: (row, id, value) => {
         return value === 'all' || row.getValue(id) === value;
       },
-    },
-    {
-      accessorKey: 'source',
-      header: 'Source',
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {row.original.source.replace('_', ' ')}
-        </span>
-      ),
     },
     {
       accessorKey: 'estimatedLoanAmount',
@@ -122,17 +125,35 @@ export function LeadTable({ leads, onStatusChange }: LeadTableProps) {
       cell: ({ row }) => formatCurrency(row.original.estimatedLoanAmount),
     },
     {
-      accessorKey: 'propertyState',
-      header: 'State',
-      cell: ({ row }) => row.original.propertyState || '-',
+      accessorKey: 'estimatedDSCR',
+      header: 'DSCR',
+      cell: ({ row }) => {
+        const dscr = row.original.estimatedDSCR;
+        if (dscr == null) return '-';
+        return (
+          <span className={dscr >= 1.0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+            {dscr.toFixed(2)}x
+          </span>
+        );
+      },
     },
     {
-      accessorKey: 'assignedLO',
-      header: 'Assigned To',
-      cell: ({ row }) =>
-        row.original.assignedLO
-          ? `${row.original.assignedLO.firstName} ${row.original.assignedLO.lastName}`
-          : '-',
+      accessorKey: 'decisionResult',
+      header: 'Decision',
+      cell: ({ row }) => {
+        const result = row.original.decisionResult;
+        if (!result) return '-';
+        const label = result === 'MANUAL_REVIEW' ? 'REFERRED' : result;
+        return (
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            result === 'APPROVED' ? 'bg-green-100 text-green-800' :
+            result === 'DENIED' ? 'bg-red-100 text-red-800' :
+            'bg-yellow-100 text-yellow-800'
+          }`}>
+            {label}
+          </span>
+        );
+      },
     },
     {
       accessorKey: 'createdAt',

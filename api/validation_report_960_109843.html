@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pipeline Validation: 960-109843</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .match { color: #28a745; font-weight: bold; }
+        .mismatch { color: #dc3545; font-weight: bold; }
+        .highlight { background: #fff3cd; }
+        .number { font-family: monospace; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Pipeline Validation Report</h1>
+
+    <div class="card">
+        <h2>Loan Summary</h2>
+        <table>
+            <tr><th>Loan ID</th><td>960-109843</td></tr>
+            <tr><th>GUID</th><td><code>6c2ce013-55b5-4225-a5f7-eba070db2b0b</code></td></tr>
+            <tr><th>Borrower</th><td>Jerome Muniken</td></tr>
+            <tr><th>Property</th><td>1731 O St, Heyburn, ID 83336</td></tr>
+            <tr><th>Milestone</th><td><span class="badge badge-success">Shipping</span></td></tr>
+        </table>
+    </div>
+
+    <div class="card highlight">
+        <h2>DSCR Comparison <span class="match">✓ MATCH</span></h2>
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Encompass</th>
+                <th>Pipeline</th>
+                <th>Difference</th>
+            </tr>
+            <tr class="highlight">
+                <td><strong>Using Encompass PITIA ($1,504)</strong></td>
+                <td class="number">1.000</td>
+                <td class="number">1.031</td>
+                <td class="number match">+0.031 (+3.1%)</td>
+            </tr>
+            <tr>
+                <td>Using Pipeline PITIA ($1,275)</td>
+                <td class="number">N/A</td>
+                <td class="number">1.215</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td>NOI Method (conservative)</td>
+                <td class="number">N/A</td>
+                <td class="number">0.883</td>
+                <td>Includes 5% vacancy, 8% mgmt</td>
+            </tr>
+        </table>
+        <p style="margin-top: 10px; font-size: 14px; color: #666;">
+            <strong>Key insight:</strong> Our rent estimate ($1,550) with Encompass PITIA gives DSCR of 1.031.<br>
+            Encompass implied rent = $1,504/mo (based on DSCR=1.000 × PITIA=$1,504)
+        </p>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Property Data</h2>
+            <table>
+                <tr><th></th><th>Encompass</th><th>Pipeline (DataTree)</th></tr>
+                <tr><td>Property Type</td><td>N/A</td><td>SFR</td></tr>
+                <tr><td>Beds / Baths</td><td>N/A</td><td>3 / 2.0</td></tr>
+                <tr><td>Square Feet</td><td>N/A</td><td>1,050</td></tr>
+                <tr><td>Year Built</td><td>N/A</td><td>2011</td></tr>
+                <tr><td>Owner</td><td>Jerome Muniken</td><td>MUNIKEN JEROME</td></tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Valuation & Loan</h2>
+            <table>
+                <tr><th></th><th>Encompass</th><th>Pipeline</th></tr>
+                <tr><td>Appraised Value</td><td class="number">$215,000</td><td>N/A</td></tr>
+                <tr><td>Purchase Price</td><td class="number">$220,000</td><td>N/A</td></tr>
+                <tr><td>Loan Amount</td><td class="number">$159,375</td><td class="number">$159,375</td></tr>
+                <tr><td>Interest Rate</td><td class="number">6.875%</td><td class="number">6.875%</td></tr>
+                <tr><td>LTV</td><td class="number">72.44%</td><td class="number">74.13%</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Monthly Payment (PITIA)</h2>
+            <table>
+                <tr><th></th><th>Encompass</th><th>Pipeline</th></tr>
+                <tr><td>P&I</td><td class="number">$1,275.38</td><td class="number">$1,046.97</td></tr>
+                <tr><td>Taxes</td><td class="number">$135.73</td><td class="number">$135.73</td></tr>
+                <tr><td>Insurance</td><td class="number">$92.67</td><td class="number">$92.67</td></tr>
+                <tr style="font-weight: bold; background: #f8f9fa;">
+                    <td>Total PITIA</td>
+                    <td class="number">$1,503.78</td>
+                    <td class="number">$1,275.37</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Rent Estimate (RentCast)</h2>
+            <table>
+                <tr><th></th><th>Encompass</th><th>Pipeline</th></tr>
+                <tr><td>Monthly Rent</td><td>(not stored)</td><td class="number">$1,550</td></tr>
+                <tr><td>Rent Range</td><td>N/A</td><td class="number">$1,290 - $1,810</td></tr>
+                <tr><td>Comparables</td><td>N/A</td><td>5 properties</td></tr>
+                <tr><td>Implied Rent (from Encompass DSCR)</td><td class="number">$1,504</td><td>-</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Pipeline Calculation Breakdown</h2>
+        <table>
+            <tr><td>Gross Monthly Rent</td><td class="number">$1,550</td></tr>
+            <tr><td>Vacancy Rate</td><td class="number">5%</td></tr>
+            <tr><td>Effective Gross Income</td><td class="number">$1,472</td></tr>
+            <tr><td>Management Fee (8%)</td><td class="number">$118</td></tr>
+            <tr><td>Net Operating Income</td><td class="number">$1,126</td></tr>
+            <tr><td>Total PITIA</td><td class="number">$1,275</td></tr>
+            <tr style="font-weight: bold; background: #e3f2fd;">
+                <td>DSCR (NOI / PITIA)</td>
+                <td class="number">0.883</td>
+            </tr>
+            <tr style="font-weight: bold; background: #fff3cd;">
+                <td>DSCR Simple (Rent / PITIA)</td>
+                <td class="number">1.215</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class='card'><h2>Warnings & Observations</h2><ul><li>Investment property confirmed (owner in CA, property in ID)</li></ul></div>
+
+</div>
+</body>
+</html>

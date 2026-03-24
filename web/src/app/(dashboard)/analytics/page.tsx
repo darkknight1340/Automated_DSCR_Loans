@@ -1,86 +1,160 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FunnelChart } from '@/components/analytics/FunnelChart';
-import { ConversionMetrics } from '@/components/analytics/ConversionMetrics';
-import { ContactMethodMetrics, type ContactMethodData } from '@/components/analytics/ContactMethodMetrics';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import type { FunnelMetrics } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
-// Mock data - will be replaced with API calls
-const mockFunnelData: FunnelMetrics = {
-  stages: [
-    { stage: 'Leads', count: 500, conversionRate: null },
-    { stage: 'Leads Verified/Qualified', count: 320, conversionRate: 0.64 },
-    { stage: 'Contacted', count: 240, conversionRate: 0.75 },
-    { stage: 'Reached Landing Page', count: 180, conversionRate: 0.75 },
-    { stage: 'Verified Information', count: 95, conversionRate: 0.53 },
-    { stage: 'Funded', count: 45, conversionRate: 0.47 },
-  ],
-  overallConversion: 0.09,
-  period: { from: '2024-01-01', to: '2024-01-31' },
-};
+interface FunnelData {
+  stages: { stage: string; count: number; conversionRate: number | null }[];
+  overallConversion: number | null;
+  decisionBreakdown: { approved: number; referred: number; denied: number };
+}
 
-const mockContactMethodData: ContactMethodData[] = [
-  { method: 'voice_call', label: 'Voice Call', contacted: 85, converted: 38, conversionRate: 44.7 },
-  { method: 'email', label: 'Email', contacted: 120, converted: 42, conversionRate: 35.0 },
-  { method: 'text', label: 'Text Message', contacted: 65, converted: 20, conversionRate: 30.8 },
-  { method: 'physical_mail', label: 'Physical Mail', contacted: 30, converted: 5, conversionRate: 16.7 },
-];
-
-const conversionMetrics = [
-  { label: 'Lead to Verified', value: '64%', change: 5, changeLabel: 'vs last period' },
-  { label: 'Verified to Contacted', value: '75%', change: -2, changeLabel: 'vs last period' },
-  { label: 'Contacted to Landing Page', value: '75%', change: 8, changeLabel: 'vs last period' },
-  { label: 'Verified Info to Funded', value: '47%', change: 3, changeLabel: 'vs last period' },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = useState('30d');
+  const [data, setData] = useState<FunnelData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/analytics/funnel`)
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!data || data.stages.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Pipeline Analytics</h2>
+          <p className="text-muted-foreground">Track lead-to-offer conversion rates</p>
+        </div>
+        <div className="rounded-lg border p-12 text-center">
+          <p className="text-muted-foreground">No pipeline data yet. Process some leads to see analytics.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { decisionBreakdown: db } = data;
+  const totalDecisions = db.approved + db.referred + db.denied;
+  const leadsCount = data.stages[0]?.count ?? 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Funnel Analytics</h2>
-          <p className="text-muted-foreground">
-            Track lead-to-funded conversion rates
-          </p>
-        </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
-            <SelectItem value="ytd">Year to Date</SelectItem>
-          </SelectContent>
-        </Select>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Pipeline Analytics</h2>
+        <p className="text-muted-foreground">Track lead-to-offer conversion rates</p>
       </div>
 
-      {/* Conversion KPIs */}
-      <ConversionMetrics metrics={conversionMetrics} />
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{leadsCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Decisions Made</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalDecisions}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {leadsCount > 0 ? `${Math.round((totalDecisions / leadsCount) * 100)}% of leads` : ''}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {totalDecisions > 0 ? `${Math.round((db.approved / totalDecisions) * 100)}%` : '0%'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Overall Conversion</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {data.overallConversion != null ? `${(data.overallConversion * 100).toFixed(1)}%` : '0%'}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Lead to offer</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Funnel Chart */}
       <FunnelChart
-        stages={mockFunnelData.stages}
-        title="Lead to Funded Conversion"
-        description="Conversion rates through each stage of the funnel"
+        stages={data.stages}
+        title="Pipeline Funnel"
+        description="Conversion through each stage of the automated pipeline"
       />
 
-      {/* Conversion by Contact Method */}
-      <div>
-        <h3 className="mb-4 text-lg font-semibold">Conversion by Contact Method</h3>
-        <ContactMethodMetrics data={mockContactMethodData} />
-      </div>
+      {/* Decision Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Decision Breakdown</CardTitle>
+          <CardDescription>Results from the automated decisioning engine</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {totalDecisions === 0 ? (
+            <p className="text-sm text-muted-foreground">No decisions yet.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex items-center gap-3 rounded-lg border p-4">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+                <div>
+                  <p className="text-2xl font-bold">{db.approved}</p>
+                  <p className="text-sm text-muted-foreground">Approved</p>
+                </div>
+                <Badge variant="default" className="ml-auto">
+                  {Math.round((db.approved / totalDecisions) * 100)}%
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border p-4">
+                <AlertTriangle className="h-8 w-8 text-yellow-500" />
+                <div>
+                  <p className="text-2xl font-bold">{db.referred}</p>
+                  <p className="text-sm text-muted-foreground">Referred</p>
+                </div>
+                <Badge variant="outline" className="ml-auto">
+                  {Math.round((db.referred / totalDecisions) * 100)}%
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border p-4">
+                <XCircle className="h-8 w-8 text-red-500" />
+                <div>
+                  <p className="text-2xl font-bold">{db.denied}</p>
+                  <p className="text-sm text-muted-foreground">Denied</p>
+                </div>
+                <Badge variant="destructive" className="ml-auto">
+                  {Math.round((db.denied / totalDecisions) * 100)}%
+                </Badge>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

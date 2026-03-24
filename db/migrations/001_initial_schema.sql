@@ -1,3 +1,5 @@
+BEGIN;
+
 -- DSCR Loan Automation Platform - Initial Schema
 -- Migration: 001_initial_schema
 -- Created: 2024-01-15
@@ -1019,7 +1021,7 @@ CREATE INDEX idx_document_versions_document ON documents.document_versions(docum
 -- =====================================================
 
 CREATE TABLE audit.audit_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID DEFAULT uuid_generate_v4(),
 
     -- Event identity
     event_type VARCHAR(100) NOT NULL,
@@ -1050,7 +1052,9 @@ CREATE TABLE audit.audit_events (
     causation_id UUID,
 
     -- Timestamp (partitioning key)
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    PRIMARY KEY (id, created_at)
 ) PARTITION BY RANGE (created_at);
 
 -- Create partitions for audit events (monthly)
@@ -1058,7 +1062,12 @@ CREATE TABLE audit.audit_events_2024_01 PARTITION OF audit.audit_events
     FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
 CREATE TABLE audit.audit_events_2024_02 PARTITION OF audit.audit_events
     FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
--- Continue for each month...
+CREATE TABLE audit.audit_events_2024_h2 PARTITION OF audit.audit_events
+    FOR VALUES FROM ('2024-03-01') TO ('2025-01-01');
+CREATE TABLE audit.audit_events_2025 PARTITION OF audit.audit_events
+    FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+CREATE TABLE audit.audit_events_2026 PARTITION OF audit.audit_events
+    FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
 
 CREATE INDEX idx_audit_events_application ON audit.audit_events(application_id, created_at DESC);
 CREATE INDEX idx_audit_events_user ON audit.audit_events(user_id, created_at DESC);
@@ -1274,5 +1283,25 @@ INSERT INTO leads.lead_sources (name, source_type) VALUES
     ('Zillow', 'marketplace'),
     ('LendingTree', 'marketplace')
 ON CONFLICT (name) DO NOTHING;
+
+-- Seed decisioning rule version
+INSERT INTO decisioning.rule_versions (rule_set_name, version, rules, effective_from, is_active, description)
+VALUES (
+    'DSCR_ELIGIBILITY_V1', '1.0.0',
+    '{"rules": ["DSCR-001","DSCR-002","LTV-001","LTV-002","CREDIT-001","CREDIT-002","CREDIT-003","CREDIT-004","PROP-001","PROP-002","LOAN-001","LOAN-002","RESERVE-001"]}',
+    '2024-01-01T00:00:00Z',
+    true,
+    'DSCR eligibility rules - initial version'
+) ON CONFLICT (rule_set_name, version) DO NOTHING;
+
+-- Seed pricing card
+INSERT INTO decisioning.pricing_cards (card_name, product_type, effective_date, base_rates, lock_periods, adders, is_active)
+VALUES (
+    'DSCR 30-Year Fixed', 'DSCR_30YR_FIXED', '2024-01-01',
+    '{"65": 6.50, "70": 6.875, "75": 7.25, "80": 7.75}',
+    '{"30": 0, "45": 0.125, "60": 0.25}',
+    '{}',
+    true
+) ON CONFLICT DO NOTHING;
 
 COMMIT;

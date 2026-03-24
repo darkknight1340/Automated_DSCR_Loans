@@ -3,10 +3,13 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import analytics, applications, ingest, leads, offers, property, valuation
+from app.routers import analytics, applications, ingest, leads, offers, property, valuation, validation
 from app.db.connection import init_db, close_db
 
 
@@ -45,9 +48,17 @@ app.include_router(offers.router, prefix="/api/v1/offers", tags=["Offers"])
 app.include_router(property.router, prefix="/api/v1/property", tags=["Property"])
 app.include_router(valuation.router, prefix="/api/v1/valuation", tags=["Valuation"])
 app.include_router(ingest.router, prefix="/api/v1/ingest", tags=["Ingest"])
+app.include_router(validation.router, prefix="/api/v1/validate", tags=["Validation"])
 
 
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy", "service": "dscr-api"}
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """Root redirect to docs."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")

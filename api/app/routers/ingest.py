@@ -5,12 +5,117 @@ Endpoints for ingesting leads from Excel/CSV files.
 """
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 from app.services.ingest import ingest_service, IngestStatus, LeadProcessingStatus
 
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Single Property Lookup
+# ---------------------------------------------------------------------------
+
+class PropertyLookupRequest(BaseModel):
+    """Request for single property lookup."""
+    first_name: str = "Property"
+    last_name: str = "Owner"
+    email: EmailStr = "lookup@example.com"
+    phone: str | None = None
+    address: str
+    city: str
+    state: str
+    zip_code: str
+
+
+class PropertyLookupResponse(BaseModel):
+    """Response for single property lookup."""
+    lead_id: str
+    status: str
+    decision: str | None = None
+    dscr_ratio: float | None = None
+    avm_value: float | None = None
+    loan_amount: float | None = None
+    loan_purpose: str | None = None
+    property_value: float | None = None
+    monthly_rent: float | None = None
+    rejection_reasons: list[str] | None = None
+    offer_token: str | None = None
+    offer_url: str | None = None
+    lead_url: str
+    loan_url: str
+    error: str | None = None
+
+
+@router.post("/address", response_model=PropertyLookupResponse)
+async def lookup_property(req: PropertyLookupRequest) -> PropertyLookupResponse:
+    """
+    Run the full pipeline for a single property address.
+
+    Returns lead ID, decision, DSCR, AVM, and links to view details.
+    """
+    csv_data = f"""first_name,last_name,email,phone,property_address,property_city,property_state,property_zip
+{req.first_name},{req.last_name},{req.email},{req.phone or ''},{req.address},{req.city},{req.state},{req.zip_code}"""
+
+    job = await ingest_service.ingest_csv(csv_data, "address_lookup.csv")
+
+    if not job.leads:
+        raise HTTPException(status_code=500, detail="Pipeline failed to process property")
+
+    lead = job.leads[0]
+    lead_id = lead.lead_id
+
+    # Extract analysis data
+    decision = None
+    rejection_reasons = None
+    loan_amount = None
+    loan_purpose = None
+    property_value = None
+    monthly_rent = None
+
+    if lead.property_data:
+        property_value = lead.property_data.get("estimated_value")
+        if property_value:
+            property_value = property_value / 100  # cents to dollars
+
+    if lead.rent_estimate:
+        monthly_rent = float(lead.rent_estimate)
+
+    # Determine decision status
+    if lead.error_message:
+        if "LOW_DSCR" in lead.error_message or "UNDERWATER" in lead.error_message:
+            decision = "DENIED"
+            rejection_reasons = [lead.error_message]
+        elif "REFERRED" in lead.error_message:
+            decision = "REFERRED"
+        else:
+            decision = "ERROR"
+    elif lead.offer_token:
+        decision = "APPROVED"
+    else:
+        decision = "REFERRED"
+
+    # Build response
+    offer_url = f"/offer/{lead.offer_token}" if lead.offer_token else None
+
+    return PropertyLookupResponse(
+        lead_id=lead_id,
+        status=lead.status.value,
+        decision=decision,
+        dscr_ratio=lead.dscr_ratio,
+        avm_value=lead.avm_value / 100 if lead.avm_value else None,
+        loan_amount=loan_amount,
+        loan_purpose=loan_purpose,
+        property_value=property_value,
+        monthly_rent=monthly_rent,
+        rejection_reasons=rejection_reasons,
+        offer_token=lead.offer_token,
+        offer_url=offer_url,
+        lead_url=f"/leads/{lead_id}",
+        loan_url=f"/leads/{lead_id}/loan",
+        error=lead.error_message if decision == "ERROR" else None,
+    )
 
 
 class IngestJobResponse(BaseModel):
