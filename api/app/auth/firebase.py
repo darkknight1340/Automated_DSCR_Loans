@@ -63,8 +63,12 @@ def init_firebase() -> None:
         return
 
     # Fall back to Application Default Credentials (works in Cloud Run)
+    # Need to specify project ID for token verification
     try:
-        _firebase_app = firebase_admin.initialize_app()
+        project_id = os.getenv("FIREBASE_PROJECT_ID")
+        options = {"projectId": project_id} if project_id else None
+        _firebase_app = firebase_admin.initialize_app(options=options)
+        print(f"Firebase initialized with project: {project_id or 'default'}")
     except Exception as e:
         print(f"Warning: Firebase initialization failed: {e}")
         print("Authentication will be disabled.")
