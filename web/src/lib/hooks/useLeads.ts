@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
 import type { Lead, LeadStatus } from '@/types';
 
 interface UseLeadsParams {
@@ -11,17 +12,20 @@ interface UseLeadsParams {
 }
 
 export function useLeads(params?: UseLeadsParams) {
+  const { user, loading } = useAuth();
   return useQuery({
     queryKey: ['leads', params],
     queryFn: () => apiClient.getLeads(params),
+    enabled: !loading && !!user,
   });
 }
 
 export function useLead(id: string) {
+  const { user, loading } = useAuth();
   return useQuery({
     queryKey: ['leads', id],
     queryFn: () => apiClient.getLead(id),
-    enabled: !!id,
+    enabled: !loading && !!user && !!id,
   });
 }
 
