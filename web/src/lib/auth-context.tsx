@@ -9,7 +9,6 @@ import {
 } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthChange, signIn, signOut, getIdToken } from './firebase';
-import { apiClient } from './api-client';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -42,9 +41,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set token getter on apiClient
-    apiClient.setTokenGetter(getIdToken);
-
     const unsubscribe = onAuthChange((user) => {
       setUser(user);
       setLoading(false);

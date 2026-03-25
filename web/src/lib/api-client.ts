@@ -12,21 +12,15 @@ import type {
   PaginatedResponse,
   ApiError,
 } from '@/types';
+import { getIdToken } from './firebase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-type TokenGetter = () => Promise<string | null>;
-
 class ApiClient {
   private baseUrl: string;
-  private tokenGetter: TokenGetter | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-  }
-
-  setTokenGetter(getter: TokenGetter | null) {
-    this.tokenGetter = getter;
   }
 
   private async request<T>(
@@ -38,12 +32,10 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    // Get fresh token for each request
-    if (this.tokenGetter) {
-      const token = await this.tokenGetter();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+    // Get fresh token for each request directly from Firebase
+    const token = await getIdToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
