@@ -48,28 +48,30 @@ export function onAuthChange(callback: (user: User | null) => void): () => void 
 }
 
 export async function getIdToken(): Promise<string | null> {
-  // Wait for auth to be ready if not yet initialized
-  if (!auth?.currentUser) {
-    // Wait up to 3 seconds for auth state to be restored
-    await new Promise<void>((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        unsubscribe();
-        resolve();
-      });
-      // Timeout after 3s
-      setTimeout(() => resolve(), 3000);
-    });
-  }
-
-  const user = auth?.currentUser;
-  if (!user) {
-    console.log('getIdToken: No user found');
+  // Check if auth is initialized
+  if (typeof window === 'undefined' || !auth) {
     return null;
   }
 
-  const token = await user.getIdToken();
-  console.log('getIdToken: Got token', token ? 'yes' : 'no');
-  return token;
+  // If we have a current user, get their token
+  if (auth.currentUser) {
+    return auth.currentUser.getIdToken();
+  }
+
+  // Wait for auth state to be restored (happens on page refresh)
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribe();
+      if (user) {
+        const token = await user.getIdToken();
+        resolve(token);
+      } else {
+        resolve(null);
+      }
+    });
+    // Timeout after 5s
+    setTimeout(() => resolve(null), 5000);
+  });
 }
 
 export function getCurrentUser(): User | null {
