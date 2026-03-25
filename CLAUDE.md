@@ -5,9 +5,31 @@ Automated DSCR (Debt Service Coverage Ratio) loan origination pipeline. Ingests 
 
 ## Tech Stack
 - **Backend**: Python 3.12 / FastAPI (async)
-- **Database**: PostgreSQL 16 via Docker Compose, raw SQL with asyncpg (no ORM)
-- **Frontend**: Next.js (in `/web`, connects to API at localhost:8000)
+- **Database**: PostgreSQL 16 (Neon serverless in production, Docker locally), raw SQL with asyncpg (no ORM)
+- **Frontend**: Next.js 14 with App Router (in `/web`)
+- **Authentication**: Firebase Auth (client + Admin SDK)
 - **Package manager**: pip with venv at `/api/.venv`
+
+## Deployment
+| Component | Service | URL |
+|-----------|---------|-----|
+| Frontend | Vercel | https://automated-dscr-loans.vercel.app |
+| Backend API | GCP Cloud Run | https://dscr-api-457239391352.us-central1.run.app |
+| Database | Neon PostgreSQL | ep-morning-block-ant935ag-pooler.c-6.us-east-1.aws.neon.tech |
+| Auth | Firebase | Project: dscr-automation |
+
+### Environment Variables (Cloud Run)
+```
+DATABASE_URL=postgresql://...@neon.tech/neondb?sslmode=require
+GOOGLE_APPLICATION_CREDENTIALS_JSON=<Firebase Admin SDK JSON>
+RENTCAST_API_KEY, PROPERTYREACH_API_KEY, DATATREE_*, ENCOMPASS_*
+```
+
+### Environment Variables (Vercel)
+```
+NEXT_PUBLIC_API_URL=https://dscr-api-457239391352.us-central1.run.app/api/v1
+NEXT_PUBLIC_FIREBASE_CONFIG=<Firebase web config JSON>
+```
 
 ## Project Structure
 ```
@@ -48,13 +70,16 @@ Automated DSCR (Debt Service Coverage Ratio) loan origination pipeline. Ingests 
 ```
 
 ## Database Schemas
-- `leads` — lead_sources, leads, lead_activities, offers
-- `loans` — borrowers, guarantors, properties, rent_rolls, applications
+Tables are organized into PostgreSQL schemas (not `public`). Always use schema-qualified names in queries:
+- `leads` — lead_sources, leads, lead_activities, offers → `leads.leads`
+- `loans` — borrowers, guarantors, properties, rent_rolls, applications → `loans.applications`
 - `enrichment` — credit_reports, avm_reports, appraisals, api_responses
 - `decisioning` — rule_versions, rule_evaluations, pricing_cards, pricing_calculations, conditions, decisions
 - `workflow` — workflow_definitions, workflow_instances, workflow_tasks, milestone_history
 - `documents` — document_types, document_registry, document_versions
 - `audit` — audit_events (partitioned), data_access_log
+
+**Neon Note**: When migrating to Neon, ensure all schemas and tables are created. Use `pg_dump --no-owner --no-acl` to export from local and import to Neon.
 
 ## Money Convention
 - **Python**: cents as `int` (e.g. `45000000` = $450,000)
@@ -107,14 +132,37 @@ MIN_DSCR=1.0                   # Minimum DSCR to qualify
 MAX_LTV=80.0                   # Maximum LTV ratio (%)
 ```
 
+## Firebase Authentication
+
+### Backend (`api/app/auth/firebase.py`)
+- Uses Firebase Admin SDK to verify ID tokens
+- `get_current_user` dependency injects authenticated user into routes
+- Protected routes: `/leads`, `/applications`, `/analytics`
+- Set `DISABLE_AUTH=true` for local development without auth
+
+### Frontend (`web/src/lib/`)
+- `firebase.ts` - Firebase client SDK initialization, `getIdToken()`
+- `auth-context.tsx` - React context providing `user`, `loading`, `getToken`, `signIn`, `signOut`
+- `hooks/use*.ts` - All data hooks use `fetchWithAuth()` which adds `Authorization: Bearer <token>` header
+
+### Login Flow
+1. User visits `/login` → enters email/password
+2. Firebase client SDK authenticates → sets session
+3. On dashboard pages, hooks call `getToken()` from auth context
+4. Token is added to API requests as Bearer token
+5. Backend verifies token with Firebase Admin SDK
+
 ## Running Locally
 ```bash
 # Start Postgres
 docker compose up -d
 
-# Start API server
+# Start API server (with auth disabled for local dev)
 cd api
 source .venv/bin/activate
+DISABLE_AUTH=true uvicorn app.main:app --reload
+
+# Or with auth enabled (requires Firebase setup)
 uvicorn app.main:app --reload
 
 # Run pipeline test
@@ -123,10 +171,10 @@ python test_pipeline.py
 
 ## Common Commands
 ```bash
-# Apply new migration manually
+# Apply new migration manually (local)
 docker compose exec postgres psql -U dscr_user -d dscr_loans -f /docker-entrypoint-initdb.d/003_api_responses.sql
 
-# Check DB tables
+# Check DB tables (local)
 docker compose exec postgres psql -U dscr_user -d dscr_loans -c "\dt enrichment.*"
 
 # Test ingest via curl
@@ -134,6 +182,32 @@ curl -X POST http://localhost:8000/api/v1/ingest/upload -F "file=@test.csv"
 
 # View offer
 curl http://localhost:8000/api/v1/offers/{token}
+```
+
+## Deployment Commands
+```bash
+# Deploy API to Cloud Run
+cd api
+gcloud run deploy dscr-api \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars "DATABASE_URL=..."
+
+# Update Cloud Run env var
+gcloud run services update dscr-api \
+  --region us-central1 \
+  --update-env-vars "KEY=value"
+
+# View Cloud Run logs
+gcloud run services logs read dscr-api --region us-central1 --limit 50
+
+# Push local DB to Neon
+PGPASSWORD=dscr_local_pass pg_dump -h localhost -p 5432 -U dscr_user -d dscr_loans --no-owner --no-acl > /tmp/dump.sql
+psql "postgresql://...@neon.tech/neondb?sslmode=require" -f /tmp/dump.sql
+
+# Frontend deploys automatically via Vercel GitHub integration
+git push origin main
 ```
 
 ## SQL Enum Values (must match exactly)
