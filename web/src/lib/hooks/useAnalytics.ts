@@ -6,6 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 
 async function fetchWithAuth<T>(endpoint: string, getToken: () => Promise<string | null>): Promise<T> {
   const token = await getToken();
+  console.log('[useAnalytics] Token retrieved:', token ? `yes (${token.substring(0, 20)}...)` : 'no');
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -13,8 +14,12 @@ async function fetchWithAuth<T>(endpoint: string, getToken: () => Promise<string
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    console.log('[useAnalytics] Authorization header set');
+  } else {
+    console.warn('[useAnalytics] No token available, request will be unauthenticated');
   }
 
+  console.log('[useAnalytics] Fetching:', `${API_BASE_URL}${endpoint}`);
   const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
 
   if (!response.ok) {
